@@ -28,6 +28,9 @@ struct AppState {
     detector: RwLock<ArbitrageDetector>,
     providers: Vec<Box<dyn DexProvider>>,
     config: Config,
+    dry_run: bool,
+    simulated_pnl: RwLock<f64>,
+    simulated_trades: RwLock<u32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -111,11 +114,19 @@ async fn main() -> anyhow::Result<()> {
     };
     let detector = RwLock::new(ArbitrageDetector::new(arb_config));
 
+    // Read DRY_RUN from environment
+    let dry_run = std::env::var("DRY_RUN")
+        .map(|v| v == "true" || v == "1")
+        .unwrap_or(true);
+
     // Create app state
     let state = Arc::new(AppState {
         detector,
         providers,
         config: config.clone(),
+        dry_run,
+        simulated_pnl: RwLock::new(0.0),
+        simulated_trades: RwLock::new(0),
     });
 
     // Spawn background price collector
@@ -148,6 +159,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/prices/:pair", get(get_pair_prices))
         // Config endpoints
         .route("/api/config", get(get_config))
+        // Status endpoint (DRY_RUN visibility)
+        .route("/api/status", get(get_status))
         // Add CORS for frontend
         .layer(
             CorsLayer::new()
@@ -279,5 +292,18 @@ async fn get_config(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         "min_profit_threshold": state.config.min_profit_threshold,
         "api_port": state.config.api_port,
         "log_level": state.config.log_level,
+    })))
+}
+
+/// Get bot status including DRY_RUN mode
+async fn get_status(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let simulated_pnl = *state.simulated_pnl.read().await;
+    let simulated_trades = *state.simulated_trades.read().await;
+    
+    Json(ApiResponse::success(serde_json::json!({
+        "dry_run": state.dry_run,
+        "bot_running": true,
+        "simulated_pnl": simulated_pnl,
+        "simulated_trades": simulated_trades,
     })))
 }

@@ -3,11 +3,13 @@ import { PriceComparison } from './components/PriceComparison';
 import { StatusBar } from './components/StatusBar';
 import { ProfitChart } from './components/ProfitChart';
 import { StatsCards } from './components/StatsCards';
+import { SimulationBanner } from './components/SimulationBanner';
 import './App.css';
 
 function App() {
   return (
     <div className="app">
+      <SimulationBanner />
       <header className="app-header">
         <div className="logo">
           <span className="logo-icon">⚡</span>
