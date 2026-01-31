@@ -15,7 +15,7 @@ mod execution;
 use solana_arb_core::{
     arbitrage::ArbitrageDetector,
     config::Config,
-    dex::DexManager,
+    dex::{DexManager, DexProvider, jupiter::JupiterProvider, raydium::RaydiumProvider, orca::OrcaProvider},
     pathfinder::PathFinder,
     risk::{RiskManager, RiskConfig, TradeDecision, TradeOutcome},
     TokenPair,
@@ -45,11 +45,19 @@ impl BotState {
             ..Default::default()
         };
 
-        let dex_manager = DexManager::new();
+        let mut dex_manager = DexManager::new();
+        
+        // Register DEX providers
+        dex_manager.add_provider(Box::new(JupiterProvider::new()));
+        info!("🔌 Registered DEX provider: Jupiter");
+        
+        dex_manager.add_provider(Box::new(RaydiumProvider::new()));
+        info!("🔌 Registered DEX provider: Raydium");
+        
+        dex_manager.add_provider(Box::new(OrcaProvider::new()));
+        info!("🔌 Registered DEX provider: Orca");
+        
         info!("🔌 DexManager initialized with {} providers", dex_manager.providers().len());
-        if dex_manager.providers().is_empty() {
-            warn!("⚠️ No DEX providers configured — bot will not fetch prices!");
-        }
 
         Self {
             detector: ArbitrageDetector::default(),
