@@ -78,6 +78,15 @@ services:
       - DRY_RUN=true
       - PRIVATE_KEY=${PRIVATE_KEY:-}
 
+  dashboard:
+    build:
+      context: ./dashboard
+    container_name: solana-arb-dashboard
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+
 volumes:
   postgres_data:
   redis_data:
