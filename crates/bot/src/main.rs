@@ -289,10 +289,19 @@ async fn main() {
 
     // Load config
     dotenvy::dotenv().ok();
-    let config = Config::from_env().unwrap_or_default();
+    
+    // Read MIN_PROFIT_THRESHOLD directly from environment at runtime
+    let min_profit_threshold: f64 = std::env::var("MIN_PROFIT_THRESHOLD")
+        .unwrap_or_else(|_| "0.5".to_string())
+        .parse()
+        .expect("Invalid MIN_PROFIT_THRESHOLD value");
+    
+    // Create config with runtime-loaded value
+    let mut config = Config::from_env().unwrap_or_default();
+    config.min_profit_threshold = min_profit_threshold;
 
     info!("🚀 Solana Arbitrage Bot starting...");
-    info!("   Min profit threshold: {}%", config.min_profit_threshold);
+    info!("   Min profit threshold: {}%", min_profit_threshold);
 
     // Check for dry-run mode
     let dry_run = std::env::var("DRY_RUN")
