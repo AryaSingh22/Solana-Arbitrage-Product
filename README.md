@@ -22,7 +22,8 @@ A high-performance arbitrage opportunity detection and automated trading system 
 docker-compose up --build -d
 ```
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
+- [Deployment Guide (DEPLOYMENT.md)](DEPLOYMENT.md) - Production setup & Going Live
+- [Architecture & Internals (docs/INTERNALS.md)](docs/INTERNALS.md) - Logic behind PathFinder & RiskManager
 
 ## 📁 Project Structure
 

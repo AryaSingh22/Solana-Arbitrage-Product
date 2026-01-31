@@ -84,6 +84,29 @@ To run the bot with real trading capabilities, you must deploy on a **Linux** en
    cargo run --bin bot
    ```
 
+## 🚀 Going Live: Production Best Practices
+
+To run this bot profitably on mainnet, consider the following:
+
+### 1. RPC Provider
+Do **NOT** use the public `api.mainnet-beta.solana.com` for trading. It is rate-limited and slow.
+- **Recommended**: [Helius](https://helius.xyz), [Triton](https://triton.one), or [QuickNode](https://quicknode.com).
+- **Configuration**: Set `SOLANA_RPC_URL` in your `.env`.
+
+### 2. Transaction Landing (Priority Fees)
+Solana network congestion requires **Compute Unit (CU) optimalization** and **Priority Fees**.
+- The current simulation uses a static configuration.
+- **Upgrade**: Implement dynamic fee estimation (e.g., fetch "high" priority fee tier from RPC) to ensure your arbitrage transactions land in the next block.
+
+### 3. Latency
+- Run your bot node as close to the validator leaders as possible (e.g., AWS us-east-1, Tokyo, or Amsterdam depending on leader schedule).
+- Use **Geyser Plugins** (gRPC) for faster account updates instead of polling HTTP.
+
+### 4. Security
+- Create a dedicated "Trade Wallet" with limited funds.
+- Never store large amounts of SOL in the bot's hot wallet.
+- Rotate private keys periodically.
+
 ## 🛠 Manual Deployment (Linux)
 
 If avoiding Docker, run services individually:
