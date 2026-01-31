@@ -65,7 +65,7 @@ services:
   bot:
     build: .
     container_name: solana-arb-bot
-    command: bot-binary
+    command: bot
     depends_on:
       postgres:
         condition: service_healthy

@@ -3,6 +3,10 @@ name = "solana-arb-bot"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "bot"
+path = "src/main.rs"
+
 [dependencies]
 solana-arb-core = { path = "../core", features = ["http"] }
 tokio = { workspace = true }

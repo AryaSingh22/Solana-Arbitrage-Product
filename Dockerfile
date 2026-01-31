@@ -1,5 +1,6 @@
 # Build Stage
-FROM rust:1.76-slim-bookworm as builder
+FROM rust:latest AS builder
+
 
 WORKDIR /usr/src/app
 
@@ -42,11 +43,10 @@ WORKDIR /app
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y libssl3 ca-certificates && rm -rf /var/lib/apt/lists/*
 
-# Copy binaries
-COPY --from=builder /usr/src/app/target/release/collector /usr/local/bin/
-COPY --from=builder /usr/src/app/target/release/api /usr/local/bin/
-COPY --from=builder /usr/src/app/target/release/bot /usr/local/bin/
-COPY --from=builder /usr/src/app/target/release/solana-arb-bot /usr/local/bin/bot-binary
+# Copy binaries (actual names from [[bin]] sections in Cargo.toml)
+COPY --from=builder /usr/src/app/target/release/collector /usr/local/bin/collector
+COPY --from=builder /usr/src/app/target/release/api /usr/local/bin/api
+COPY --from=builder /usr/src/app/target/release/bot /usr/local/bin/bot
 
 # Copy config
 COPY .env.example .env
