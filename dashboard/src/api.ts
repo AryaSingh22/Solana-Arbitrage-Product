@@ -1,6 +1,6 @@
 // API Client for the Solana Arbitrage Backend
 
-import type { ApiResponse, ArbitrageOpportunity, PriceData, Config } from './types';
+import type { ApiResponse, ArbitrageOpportunity, PriceData, Config, StatusData } from './types';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
@@ -62,5 +62,10 @@ export const api = {
     // Get config
     async getConfig(): Promise<ApiResponse<Config>> {
         return fetchApi('/api/config');
+    },
+
+    // Get bot status
+    async getStatus(): Promise<ApiResponse<StatusData>> {
+        return fetchApi('/api/status');
     },
 };

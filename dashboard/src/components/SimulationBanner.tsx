@@ -1,22 +1,7 @@
 import { useState, useEffect } from 'react';
 import './SimulationBanner.css';
-
-interface DexHealth {
-    name: string;
-    last_success_at: string | null;
-    consecutive_errors: number;
-    status: string;
-}
-
-interface StatusData {
-    dry_run: boolean;
-    bot_running: boolean;
-    simulated_pnl: number;
-    simulated_trades: number;
-    heartbeat_count: number;
-    last_scan_at: string;
-    dex_health: DexHealth[];
-}
+import { api } from '../api';
+import type { StatusData } from '../types';
 
 function getRelativeTime(isoString: string): string {
     const now = new Date();
@@ -45,9 +30,8 @@ export function SimulationBanner() {
     useEffect(() => {
         const fetchStatus = async () => {
             try {
-                const res = await fetch('/api/status');
-                const data = await res.json();
-                if (data.success) {
+                const data = await api.getStatus();
+                if (data.success && data.data) {
                     setStatus(data.data);
                 }
             } catch (err) {

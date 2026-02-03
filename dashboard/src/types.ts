@@ -44,3 +44,20 @@ export interface Config {
     api_port: number;
     log_level: string;
 }
+
+export interface DexHealth {
+    name: string;
+    last_success_at: string | null;
+    consecutive_errors: number;
+    status: string;
+}
+
+export interface StatusData {
+    dry_run: boolean;
+    bot_running: boolean;
+    simulated_pnl: number;
+    simulated_trades: number;
+    heartbeat_count: number;
+    last_scan_at: string;
+    dex_health: DexHealth[];
+}
