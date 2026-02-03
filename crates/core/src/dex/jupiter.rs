@@ -26,6 +26,7 @@ struct JupiterPriceResponse {
     data: HashMap<String, JupiterTokenPrice>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct JupiterTokenPrice {

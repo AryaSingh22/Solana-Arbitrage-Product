@@ -15,7 +15,7 @@ mod execution;
 use solana_arb_core::{
     arbitrage::ArbitrageDetector,
     config::Config,
-    dex::{DexManager, DexProvider, jupiter::JupiterProvider, raydium::RaydiumProvider, orca::OrcaProvider},
+    dex::{DexManager, jupiter::JupiterProvider, raydium::RaydiumProvider, orca::OrcaProvider},
     pathfinder::PathFinder,
     risk::{RiskManager, RiskConfig, TradeDecision, TradeOutcome},
     TokenPair,
@@ -113,7 +113,7 @@ async fn run_trading_loop(state: Arc<RwLock<BotState>>, pairs: Vec<TokenPair>) {
 
         // Find and evaluate opportunities
         let opportunities = {
-            let mut state = state.write().await;
+            let state = state.read().await;
             
             // Simple arbitrage opportunities
             let mut opps = state.detector.find_all_opportunities();
@@ -237,10 +237,10 @@ async fn execute_trade(
     // AND calling async execution which shouldn't hold locks if possible.
     // However, Executor is stateless (HttpClient) so we can clone data needed.
 
-    let (is_dry_run, decision, wallet_pubkey) = {
+    let (is_dry_run, decision) = {
         let state = state.read().await;
         let decision = state.risk_manager.can_trade(&pair_symbol, Decimal::from(100));
-        (state.dry_run, decision, state.wallet.pubkey.clone())
+        (state.dry_run, decision)
     };
 
     let size = match decision {

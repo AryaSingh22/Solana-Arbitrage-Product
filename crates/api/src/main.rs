@@ -3,10 +3,10 @@
 //! REST and WebSocket API for the Arbitrage Dashboard
 
 use axum::{
-    extract::{Path, Query, State, WebSocketUpgrade},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Json},
-    routing::{get, post},
+    routing::get,
     Router,
 };
 use serde::{Deserialize, Serialize};
@@ -22,7 +22,7 @@ use solana_arb_core::{
     arbitrage::ArbitrageDetector,
     config::Config,
     dex::{jupiter::JupiterProvider, orca::OrcaProvider, raydium::RaydiumProvider, DexProvider},
-    ArbitrageConfig, ArbitrageOpportunity, DexType, PriceData, TokenPair,
+    ArbitrageConfig, PriceData, TokenPair,
 };
 
 /// Application state shared across handlers

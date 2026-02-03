@@ -18,6 +18,7 @@ pub struct RaydiumProvider {
     client: reqwest::Client,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct RaydiumPair {
@@ -39,6 +40,7 @@ impl RaydiumProvider {
     }
 
     /// Parse a pair name into base and quote tokens
+    #[allow(dead_code)]
     fn parse_pair_name(name: &str) -> Option<(String, String)> {
         let parts: Vec<&str> = name.split('-').collect();
         if parts.len() == 2 {

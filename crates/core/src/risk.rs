@@ -71,7 +71,7 @@ impl RiskManager {
     }
 
     /// Check if a trade is allowed under current risk parameters
-    pub fn can_trade(&self, pair: &str, size: Decimal) -> TradeDecision {
+    pub fn can_trade(&self, _pair: &str, size: Decimal) -> TradeDecision {
         // Check circuit breaker
         if self.circuit_breaker_triggered {
             return TradeDecision::Rejected {

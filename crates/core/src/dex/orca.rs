@@ -5,7 +5,6 @@
 use async_trait::async_trait;
 use rust_decimal::Decimal;
 use serde::Deserialize;
-use std::collections::HashMap;
 use tokio::sync::mpsc;
 
 use crate::{ArbitrageError, ArbitrageResult, DexType, PriceData, TokenPair};
@@ -23,6 +22,7 @@ struct OrcaWhirlpoolList {
     whirlpools: Vec<OrcaWhirlpool>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct OrcaWhirlpool {
@@ -34,6 +34,7 @@ struct OrcaWhirlpool {
     tvl: Option<f64>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 struct OrcaToken {
     mint: String,

@@ -11,7 +11,7 @@ use rust_decimal::prelude::ToPrimitive;
 use std::collections::HashMap;
 use tracing::{info, debug, warn};
 
-use solana_arb_core::{TokenPair, ArbitrageOpportunity};
+use solana_arb_core::ArbitrageOpportunity;
 use crate::wallet::Wallet;
 
 const JUPITER_API_URL: &str = "https://quote-api.jup.ag/v6";
@@ -26,14 +26,6 @@ const ORCA_MINT: &str = "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE";
 pub struct Executor {
     client: Client,
     token_map: HashMap<String, String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct QuoteResponse {
-    #[serde(rename = "outAmount")]
-    out_amount: String,
-    #[serde(rename = "priceImpactPct")]
-    price_impact_pct: String,
 }
 
 #[derive(Debug, Serialize)]

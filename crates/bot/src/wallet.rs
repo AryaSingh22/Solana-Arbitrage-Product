@@ -3,7 +3,7 @@
 //! Handles wallet configuration for simulated trading environment.
 //! Uses raw strings instead of SDK Keypairs to avoid build conflicts on Windows.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::env;
 use tracing::{info, warn};
 

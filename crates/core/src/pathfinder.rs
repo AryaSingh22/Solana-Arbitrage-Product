@@ -6,7 +6,9 @@
 use rust_decimal::Decimal;
 use std::collections::{HashMap, HashSet};
 
-use crate::{DexType, PriceData, TokenPair};
+use crate::{DexType, PriceData};
+#[cfg(test)]
+use crate::TokenPair;
 
 /// Represents an edge in the trading graph
 #[derive(Debug, Clone)]
