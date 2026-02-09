@@ -2,7 +2,8 @@
 members = [
     "crates/core",
     "crates/collector",
-    "crates/api", "crates/bot",
+    "crates/api",
+    # "crates/bot", # Temporarily excluded - requires Solana SDK
 ]
 resolver = "2"
 
@@ -16,8 +17,8 @@ license = "MIT"
 # Async Runtime
 tokio = { version = "1", features = ["full"] }
 
-# Serialization
-serde = { version = "1", features = ["derive"] }
+# Serialization - cap serde to avoid serde_core experimental feature
+serde = { version = ">=1.0.100, <1.0.227", features = ["derive"] }
 serde_json = "1"
 
 # Time handling
@@ -34,13 +35,13 @@ anyhow = "1"
 async-trait = "0.1"
 
 # Database
-sqlx = { version = "0.7", features = ["postgres", "runtime-tokio", "chrono", "rust_decimal"] }
+sqlx = { version = "0.8", features = ["postgres", "runtime-tokio", "chrono", "rust_decimal"] }
 
 # HTTP client
 reqwest = { version = "0.11", features = ["json"] }
 
-# WebSocket
-tokio-tungstenite = { version = "0.21", features = ["rustls-tls-webpki-roots"] }
+# WebSocket - upgraded to match axum 0.7's rustls requirements
+tokio-tungstenite = { version = "0.26", features = ["rustls-tls-webpki-roots"] }
 
 # Web framework
 axum = { version = "0.7", features = ["ws"] }

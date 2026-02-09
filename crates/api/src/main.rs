@@ -23,7 +23,6 @@ use solana_arb_core::{
     config::Config,
     dex::{jupiter::JupiterProvider, orca::OrcaProvider, raydium::RaydiumProvider, DexProvider},
     ArbitrageConfig, DexType, PriceData, TokenPair,
-    ArbitrageConfig, PriceData, TokenPair,
 };
 
 /// Application state shared across handlers
