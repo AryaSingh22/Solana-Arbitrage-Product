@@ -21,10 +21,10 @@ build/
 
 # Logs
 *.log
-build_err.txt
-build_errors.txt
-build_errors_3.txt
-build_log*.txt
+build_err*.txt
+
+# Runtime data
+data/
 
 # OS
 Thumbs.db
