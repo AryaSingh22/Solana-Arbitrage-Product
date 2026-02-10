@@ -24,6 +24,9 @@ use solana_arb_core::{
 };
 use wallet::Wallet;
 use execution::Executor;
+use solana_sdk::pubkey::Pubkey;
+use std::str::FromStr;
+use crate::execution::{SOL_MINT, USDC_MINT, RAY_MINT, ORCA_MINT};
 
 /// Trading bot state
 struct BotState {
@@ -319,6 +322,42 @@ async fn execute_trade(
         }
     };
 
+    // Check Flash Loan Viability
+    let flash_loan_quote = {
+        let state_read = state.read().await;
+        if let Some(mint) = resolve_mint(&opp.pair.base) { // Assume borrowing base asset
+             match state_read.flash_loan_provider.get_quote(mint, size).await {
+                Ok(quote) => {
+                    let total_profit_usd = (size * opp.net_profit_pct) / Decimal::from(100);
+                    // Assuming quote.fee is in same denomination as amount (base currency)
+                    // We need to convert fee to USD to compare with profit, or profit to base.
+                    // Simplified: fee is in base token.
+                    // If base is SOL ($100), fee 0.09% = 0.0009 SOL.
+                    // Profit is % of size.
+                    
+                    let fee_pct = (quote.fee / size) * Decimal::from(100);
+                    
+                    if opp.net_profit_pct > fee_pct {
+                         info!(
+                            "⚡ Flash Loan Viable! Borrowing {} {} costs {} {} ({:.4}%) - Net edge: {:.4}%",
+                            size, opp.pair.base, quote.fee, opp.pair.base, fee_pct, opp.net_profit_pct - fee_pct
+                        );
+                        Some(quote)
+                    } else {
+                        debug!("Flash Loan fee too high: {:.4}% > {:.4}% profit", fee_pct, opp.net_profit_pct);
+                        None
+                    }
+                },
+                Err(e) => {
+                    warn!("Failed to get flash loan quote: {}", e);
+                    None
+                }
+             }
+        } else {
+            None
+        }
+    };
+
     if is_dry_run {
         // Simulate trade
         info!(
@@ -456,4 +495,15 @@ async fn main() {
 
     // Run trading loop
     run_trading_loop(state, pairs).await;
+}
+
+fn resolve_mint(symbol: &str) -> Option<Pubkey> {
+    match symbol {
+        "SOL" => Pubkey::from_str(SOL_MINT).ok(),
+        "USDC" => Pubkey::from_str(USDC_MINT).ok(),
+        "RAY" => Pubkey::from_str(RAY_MINT).ok(),
+        "ORCA" => Pubkey::from_str(ORCA_MINT).ok(),
+        "JUP" => None, // JUP mint not in constants yet, can add later or ignore
+        _ => None,
+    }
 }
