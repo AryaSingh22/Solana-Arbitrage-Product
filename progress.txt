@@ -1,0 +1,1 @@
+- [Phase 3] Defined core Flash Loan interface (`FlashLoanProvider`, `FlashLoanQuote`) in `crates/core`.
