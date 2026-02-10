@@ -10,6 +10,8 @@ pub mod arbitrage;
 pub mod config;
 pub mod pathfinder;
 pub mod risk;
+pub mod flash_loan;
+pub mod history;
 
 #[cfg(test)]
 mod tests;

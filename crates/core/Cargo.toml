@@ -15,6 +15,7 @@ async-trait = { workspace = true }
 tracing = { workspace = true }
 futures-util = "0.3"
 uuid = { version = "1", features = ["v4", "serde"] }
+solana-sdk = { workspace = true }
 
 # Optional - for HTTP-based DEX providers
 reqwest = { workspace = true, optional = true }

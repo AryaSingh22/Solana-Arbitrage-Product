@@ -1,72 +1,80 @@
-# 📜 Readable Bot Logs (Dry Run - Randomized Simulation)
+# 📜 Solana Arbitrage Bot — Dry Run Log (Phase 3)
 
-This log file presents simulated arbitrage opportunities with randomized parameters (Pair, DEXs, Profit) to demonstrate the bot's detection capabilities.
-
-**Session ID:** `SIM-RAND-2026-02-11`
-**Mode:** Dry Run (Randomized Logic)
-**Date:** 2026-02-11
+**Session:** `SIM-2026-02-11` | **Mode:** Dry Run (Randomized Simulation) | **Duration:** 100s (50 ticks × 2s)
 
 ---
 
-### 🕒 00:20:05 - Opportunity Detected
-| Pair | Path | Size | Profit | Est. Gain |
-|------|------|------|--------|-----------|
-| **SOL/USDC** | Raydium -> Orca | $120.00 | **2.32%** | $2.78 |
-> *Strategy*: Buy low on Raydium, Sell high on Orca.
-
-### 🕒 00:20:06 - Opportunity Detected
-| Pair | Path | Size | Profit | Est. Gain |
-|------|------|------|--------|-----------|
-| **JUP/USDC** | Orca -> Jupiter | $350.00 | **1.15%** | $4.02 |
-> *Strategy*: Buy low on Orca, Sell high on Jupiter.
-
-### 🕒 00:20:07 - Opportunity Detected
-| Pair | Path | Size | Profit | Est. Gain |
-|------|------|------|--------|-----------|
-| **RAY/USDC** | Raydium -> Jupiter | $85.00 | **3.40%** | $2.89 |
-> *Strategy*: Buy low on Raydium, Sell high on Jupiter.
-
-### 🕒 00:20:07 - Opportunity Detected
-| Pair | Path | Size | Profit | Est. Gain |
-|------|------|------|--------|-----------|
-| **ORCA/USDC** | Jupiter -> Raydium | $200.00 | **0.95%** | $1.90 |
-> *Strategy*: Buy low on Jupiter, Sell high on Raydium.
-
-### 🕒 00:20:08 - Opportunity Detected
-| Pair | Path | Size | Profit | Est. Gain |
-|------|------|------|--------|-----------|
-| **SOL/USDC** | Orca -> Raydium | $450.00 | **1.80%** | $8.10 |
-> *Strategy*: Buy low on Orca, Sell high on Raydium.
-
-### 🕒 00:20:09 - Opportunity Detected
-| Pair | Path | Size | Profit | Est. Gain |
-|------|------|------|--------|-----------|
-| **JUP/USDC** | Raydium -> Orca | $150.00 | **4.10%** | $6.15 |
-> *Strategy*: Buy low on Raydium, Sell high on Orca.
-
-### 🕒 00:20:09 - Opportunity Detected
-| Pair | Path | Size | Profit | Est. Gain |
-|------|------|------|--------|-----------|
-| **RAY/USDC** | Jupiter -> Orca | $90.00 | **2.22%** | $1.99 |
-> *Strategy*: Buy low on Jupiter, Sell high on Orca.
-
-### 🕒 00:20:10 - Opportunity Detected
-| Pair | Path | Size | Profit | Est. Gain |
-|------|------|------|--------|-----------|
-| **ORCA/USDC** | Raydium -> Jupiter | $310.00 | **1.50%** | $4.65 |
-> *Strategy*: Buy low on Raydium, Sell high on Jupiter.
-
-### 🕒 00:20:11 - Opportunity Detected
-| Pair | Path | Size | Profit | Est. Gain |
-|------|------|------|--------|-----------|
-| **SOL/USDC** | Raydium -> Jupiter | $100.00 | **0.60%** | $0.60 |
-> *Strategy*: Buy low on Raydium, Sell high on Jupiter.
-
-### 🕒 00:20:12 - Opportunity Detected
-| Pair | Path | Size | Profit | Est. Gain |
-|------|------|------|--------|-----------|
-| **JUP/USDC** | Orca -> Raydium | $275.00 | **2.90%** | $7.97 |
-> *Strategy*: Buy low on Orca, Sell high on Raydium.
+## 🚀 Bot Startup
+```
+🚀 Solana Arbitrage Bot starting...
+   Min profit threshold: 0.5%
+   Mode: DRY_RUN (Simulation)
+   Priority fee: 50000 µL/CU
+   Slippage: 50 bps
+   Max retries: 3
+```
 
 ---
-**Summary**: 10 opportunities detected across 4 pairs and 3 DEXs. Total potential profit: **$41.05** (Simulated).
+
+## � Detected Opportunities (20 Trades)
+
+| # | Time | Pair | Buy DEX | Sell DEX | Buy Price | Sell Price | Size | Profit % | Est. Gain |
+|---|------|------|---------|----------|-----------|------------|------|----------|-----------|
+| 1 | 19:59:33 | **SOL/USDC** | Jupiter | Orca | $115.81 | $116.83 | $720 | **0.88%** | $6.34 |
+| 2 | 19:59:43 | **JUP/USDC** | Raydium | Jupiter | $184.53 | $188.68 | $840 | 🔥 **2.25%** | $18.90 |
+| 3 | 19:59:47 | **ORCA/USDC** | Orca | Jupiter | $195.99 | $199.77 | $657 | **1.93%** | $12.68 |
+| 4 | 19:59:57 | **BONK/SOL** | Raydium | Jupiter | $74.93 | $75.62 | $462 | **0.92%** | $4.25 |
+| 5 | 20:00:01 | **SOL/USDC** | Jupiter | Orca | $81.82 | $82.81 | $433 | **1.21%** | $5.24 |
+| 6 | 20:00:13 | **RAY/USDC** | Raydium | Jupiter | $148.78 | $152.26 | $502 | 🔥 **2.34%** | $11.75 |
+| 7 | 20:00:17 | **SOL/USDC** | Orca | Jupiter | $137.19 | $138.77 | $687 | **1.15%** | $7.90 |
+| 8 | 20:00:19 | **RAY/USDC** | Jupiter | Orca | $103.50 | $104.84 | $271 | **1.29%** | $3.50 |
+| 9 | 20:00:21 | **ORCA/USDC** | Orca | Raydium | $44.60 | $45.10 | $964 | **1.13%** | $10.89 |
+| 10 | 20:00:23 | **ORCA/USDC** | Raydium | Orca | $39.09 | $39.77 | $905 | **1.75%** | $15.84 |
+| 11 | 20:00:25 | **SOL/USDC** | Orca | Jupiter | $70.67 | $71.67 | $373 | **1.42%** | $5.30 |
+| 12 | 20:00:31 | **BONK/SOL** | Raydium | Jupiter | $12.47 | $12.73 | $420 | 🔥 **2.05%** | $8.61 |
+| 13 | 20:00:41 | **BONK/SOL** | Raydium | Orca | $132.29 | $133.57 | $547 | **0.97%** | $5.31 |
+| 14 | 20:00:43 | **ORCA/USDC** | Orca | Jupiter | $179.60 | $182.33 | $964 | **1.52%** | $14.65 |
+| 15 | 20:00:45 | **ORCA/USDC** | Raydium | Jupiter | $135.32 | $136.19 | $815 | **0.64%** | $5.22 |
+| 16 | 20:00:49 | **JUP/USDC** | Jupiter | Raydium | $198.52 | $200.94 | $401 | **1.22%** | $4.89 |
+| 17 | 20:00:51 | **BONK/SOL** | Orca | Jupiter | $17.78 | $17.96 | $473 | **1.02%** | $4.82 |
+| 18 | 20:00:53 | **JUP/USDC** | Raydium | Jupiter | $185.86 | $190.32 | $798 | 🔥 **2.40%** | $19.15 |
+| 19 | 20:00:55 | **BONK/SOL** | Jupiter | Orca | $99.75 | $100.62 | $531 | **0.87%** | $4.62 |
+| 20 | 20:01:01 | **JUP/USDC** | Jupiter | Raydium | $52.40 | $53.54 | $968 | 🔥 **2.17%** | $21.01 |
+
+---
+
+## 📊 Session Summary
+
+| Metric | Value |
+|--------|-------|
+| **Total Scans** | 50 |
+| **Opportunities Found** | 20 |
+| **Detection Rate** | 40% |
+| **Total Simulated Profit** | **$190.87** |
+| **Avg Profit per Trade** | $9.54 |
+| **Best Trade** | JUP/USDC (Raydium→Jupiter) — $21.01 |
+| **Highest Margin** | RAY/USDC — 2.34% |
+| **Unique Pairs** | 5 (SOL, RAY, ORCA, JUP, BONK) |
+| **Unique Routes** | 10 (across 3 DEXs) |
+
+### Profit by Pair
+| Pair | Trades | Total Profit | Avg Profit |
+|------|--------|-------------|------------|
+| **SOL/USDC** | 4 | $24.78 | $6.20 |
+| **JUP/USDC** | 4 | $63.95 | $15.99 |
+| **ORCA/USDC** | 5 | $59.28 | $11.86 |
+| **BONK/SOL** | 5 | $27.61 | $5.52 |
+| **RAY/USDC** | 2 | $15.25 | $7.63 |
+
+### Status Heartbeats
+```
+📊 Status - Exposure: $0.00, Simulated P&L: $0,    Trades: 0,  Paused: false  (tick 0)
+📊 Status - Exposure: $0.00, Simulated P&L: $5.0,  Trades: 3,  Paused: false  (tick 10)
+📊 Status - Exposure: $0.00, Simulated P&L: $10.0, Trades: 6,  Paused: false  (tick 20)
+📊 Status - Exposure: $0.00, Simulated P&L: $15.0, Trades: 10, Paused: false  (tick 30)
+📊 Status - Exposure: $0.00, Simulated P&L: $20.0, Trades: 13, Paused: false  (tick 40)
+```
+
+---
+
+*Generated by `solana-arb-core` simulation engine (Phase 3) — 2026-02-11*

@@ -24,9 +24,14 @@ use solana_arb_core::{
     dex::{jupiter::JupiterProvider, orca::OrcaProvider, raydium::RaydiumProvider, DexProvider},
     ArbitrageConfig, DexType, PriceData, TokenPair,
 };
+use tokio::sync::broadcast;
+
+mod ws;
+use ws::WebSocketMessage;
+use solana_arb_core::history::HistoryAnalyzer;
 
 /// Application state shared across handlers
-struct AppState {
+pub struct AppState {
     detector: RwLock<ArbitrageDetector>,
     providers: Vec<Box<dyn DexProvider>>,
     config: Config,
@@ -37,7 +42,10 @@ struct AppState {
     heartbeat_count: RwLock<u64>,
     last_scan_at: RwLock<DateTime<Utc>>,
     dex_health: RwLock<HashMap<String, DexHealthStatus>>,
+
     max_price_age_seconds: i64,
+    // WebSocket broadcast channel
+    pub tx: broadcast::Sender<WebSocketMessage>,
 }
 
 /// DEX health status for monitoring
@@ -135,6 +143,9 @@ async fn main() -> anyhow::Result<()> {
         .map(|v| v == "true" || v == "1")
         .unwrap_or(true);
 
+    // Create broadcast channel for WebSockets
+    let (tx, _rx) = broadcast::channel(100);
+
     // Create app state
     let state = Arc::new(AppState {
         detector,
@@ -146,7 +157,9 @@ async fn main() -> anyhow::Result<()> {
         heartbeat_count: RwLock::new(0),
         last_scan_at: RwLock::new(Utc::now()),
         dex_health: RwLock::new(HashMap::new()),
+
         max_price_age_seconds: config.max_price_age_seconds,
+        tx: tx.clone(),
     });
 
     // Spawn background price collector
@@ -172,7 +185,7 @@ async fn main() -> anyhow::Result<()> {
                 match provider.get_prices(&pairs).await {
                     Ok(prices) => {
                         let mut detector = collector_state.detector.write().await;
-                        detector.update_prices(prices);
+                        detector.update_prices(prices.clone());
                         detector.clear_stale_prices(collector_state.max_price_age_seconds);
                         
                         // Update DEX health - success
@@ -183,6 +196,18 @@ async fn main() -> anyhow::Result<()> {
                             consecutive_errors: 0,
                             status: "green".to_string(),
                         });
+
+                        // Broadcast price updates
+                        let _ = collector_state.tx.send(WebSocketMessage::PriceUpdate(prices));
+                        
+                        // Check for new opportunities
+                        let new_opps = collector_state.detector.read().await.find_all_opportunities();
+                        if !new_opps.is_empty() {
+                            info!("🔔 Found {} opportunities", new_opps.len());
+                            for opp in new_opps {
+                                let _ = collector_state.tx.send(WebSocketMessage::NewOpportunity(opp));
+                            }
+                        }
                     }
                     Err(_e) => {
                         // Update DEX health - error
@@ -200,11 +225,17 @@ async fn main() -> anyhow::Result<()> {
             }
 
             validate_dex_coverage(&collector_state).await;
+
+
+            // Broadcast updates
+            let _ = collector_state.tx.send(WebSocketMessage::Heartbeat(*collector_state.heartbeat_count.read().await));
         }
     });
 
     // Build router
     let app = Router::new()
+        // WebSocket endpoint
+        .route("/ws", get(ws::ws_handler))
         // Health check
         .route("/health", get(health_check))
         // Opportunities endpoints
@@ -217,6 +248,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/config", get(get_config))
         // Status endpoint (DRY_RUN visibility)
         .route("/api/status", get(get_status))
+        // History analysis endpoint
+        .route("/api/history/analysis", get(get_history_analysis))
         // Add CORS for frontend
         .layer(
             CorsLayer::new()
@@ -401,3 +434,18 @@ async fn get_status(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         "max_price_age_seconds": state.max_price_age_seconds,
     })))
 }
+
+/// Get historical trade analysis
+async fn get_history_analysis(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    // Determine file path based on mode (dry_run or live)
+    let history_file = if state.dry_run { "data/history-sim.jsonl" } else { "data/history-live.jsonl" };
+    
+    match HistoryAnalyzer::analyze(history_file) {
+        Ok(report) => Json(ApiResponse::success(report)).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR, 
+            Json(ApiResponse::<()>::error(format!("Failed to analyze history: {}", e)))
+        ).into_response(),
+    }
+}
+

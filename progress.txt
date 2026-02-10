@@ -1,0 +1,12 @@
+- [Phase 3] Defined core Flash Loan interface (`FlashLoanProvider`, `FlashLoanQuote`) in `crates/core`.
+- [Phase 3] Implemented MockFlashLoanProvider and unit tests in crates/core/src/flash_loan.rs to facilitate testing.
+- [Phase 3] Integrated FlashLoanProvider into BotState in crates/bot, initializing a MockFlashLoanProvider.
+- [Phase 3] Implemented logic in `crates/bot/src/main.rs` to check trade profitability against Flash Loan fees and log viable opportunities.
+
+- [Phase 3] Enabled `crates/api` in workspace and implemented WebSocket (`/ws`) support for real-time price & opportunity updates.
+- [Phase 3] Implemented `Historical Data Collection` integration `crates/core/src/history.rs` to persist trade outcomes (simulated & real) to JSONL files for strategy optimization.
+
+- [Phase 3] Implemented Historical Data Analysis logic in `crates/core/src/history.rs` and exposed via `/api/history/analysis` endpoint in `crates/api/src/main.rs`.
+
+----------
+ralph-done-8j933

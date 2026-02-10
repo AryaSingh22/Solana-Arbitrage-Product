@@ -2,7 +2,7 @@
 members = [
     "crates/core",
     # "crates/collector", - DISABLED to fix build conflict
-    # "crates/api",       - DISABLED to fix build conflict
+    "crates/api",
     "crates/bot",
 ]
 resolver = "2"

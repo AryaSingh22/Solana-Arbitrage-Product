@@ -19,10 +19,15 @@ use solana_arb_core::{
     dex::{DexManager, jupiter::JupiterProvider, raydium::RaydiumProvider, orca::OrcaProvider},
     pathfinder::PathFinder,
     risk::{RiskManager, RiskConfig, TradeDecision, TradeOutcome},
+    flash_loan::{FlashLoanProvider, MockFlashLoanProvider},
+    history::HistoryRecorder,
     DexType, TokenPair,
 };
 use wallet::Wallet;
 use execution::Executor;
+use solana_sdk::pubkey::Pubkey;
+use std::str::FromStr;
+use crate::execution::{SOL_MINT, USDC_MINT, RAY_MINT, ORCA_MINT};
 
 /// Trading bot state
 struct BotState {
@@ -32,6 +37,8 @@ struct BotState {
     dex_manager: DexManager,
     executor: Executor,
     wallet: Wallet,
+    flash_loan_provider: Box<dyn FlashLoanProvider>,
+    history_recorder: HistoryRecorder,
     is_running: bool,
     dry_run: bool,
     rpc_url: String,
@@ -62,6 +69,15 @@ impl BotState {
         
         info!("🔌 DexManager initialized with {} providers", dex_manager.providers().len());
 
+        // Initialize Flash Loan Provider
+        let flash_loan_provider = Box::new(MockFlashLoanProvider::new("Solend-Mock"));
+        info!("🏦 Initialized Flash Loan Provider: {}", flash_loan_provider.name());
+
+        let temp_session_id = format!("SESSION-{}", Utc::now().format("%Y%m%d-%H%M%S"));
+        let history_file = if dry_run { "data/history-sim.jsonl" } else { "data/history-live.jsonl" };
+        let history_recorder = HistoryRecorder::new(history_file, &temp_session_id);
+        info!("📜 Trade history will be saved to: {}", history_file);
+
         Self {
             detector: ArbitrageDetector::default(),
             path_finder: PathFinder::new(4),
@@ -75,6 +91,8 @@ impl BotState {
                 rpc_commitment: config.rpc_commitment.clone(),
             }),
             wallet: Wallet::new().expect("Failed to load wallet"),
+            flash_loan_provider,
+            history_recorder,
             is_running: true,
             dry_run,
             rpc_url: config.solana_rpc_url.clone(),
@@ -312,6 +330,42 @@ async fn execute_trade(
         }
     };
 
+    // Check Flash Loan Viability
+    let flash_loan_quote = {
+        let state_read = state.read().await;
+        if let Some(mint) = resolve_mint(&opp.pair.base) { // Assume borrowing base asset
+             match state_read.flash_loan_provider.get_quote(mint, size).await {
+                Ok(quote) => {
+                    let total_profit_usd = (size * opp.net_profit_pct) / Decimal::from(100);
+                    // Assuming quote.fee is in same denomination as amount (base currency)
+                    // We need to convert fee to USD to compare with profit, or profit to base.
+                    // Simplified: fee is in base token.
+                    // If base is SOL ($100), fee 0.09% = 0.0009 SOL.
+                    // Profit is % of size.
+                    
+                    let fee_pct = (quote.fee / size) * Decimal::from(100);
+                    
+                    if opp.net_profit_pct > fee_pct {
+                         info!(
+                            "⚡ Flash Loan Viable! Borrowing {} {} costs {} {} ({:.4}%) - Net edge: {:.4}%",
+                            size, opp.pair.base, quote.fee, opp.pair.base, fee_pct, opp.net_profit_pct - fee_pct
+                        );
+                        Some(quote)
+                    } else {
+                        debug!("Flash Loan fee too high: {:.4}% > {:.4}% profit", fee_pct, opp.net_profit_pct);
+                        None
+                    }
+                },
+                Err(e) => {
+                    warn!("Failed to get flash loan quote: {}", e);
+                    None
+                }
+             }
+        } else {
+            None
+        }
+    };
+
     if is_dry_run {
         // Simulate trade
         info!(
@@ -333,6 +387,21 @@ async fn execute_trade(
             {
                 warn!("Simulation execution failed: {}", e);
             }
+        }
+
+        // Record simulation history
+        {
+            let state_read = state.read().await;
+            let est_profit = (size * opp.net_profit_pct) / Decimal::from(100);
+            state_read.history_recorder.record_trade(
+                opp,
+                size,
+                est_profit,
+                true,
+                None,
+                None,
+                true
+            );
         }
 
         // Simulate successful outcome
@@ -375,13 +444,44 @@ async fn execute_trade(
                     profit_loss: size * opp.net_profit_pct / Decimal::from(100), // Estimated
                     was_successful: true,
                 };
+                
+                // Record history
+                {
+                    let state_read = state.read().await;
+                    let est_profit = (size * opp.net_profit_pct) / Decimal::from(100);
+                    state_read.history_recorder.record_trade(
+                        opp,
+                        size,
+                        est_profit,
+                        true,
+                        Some(tx_signature.to_string()),
+                        None,
+                        false
+                    );
+                }
+
                 let mut state = state.write().await;
                 state.risk_manager.record_trade(outcome);
             }
             Err(e) => {
                 error!("❌ Trade failed: {}", e);
+                
+                // Record failure history
+                {
+                    let state_read = state.read().await;
+                    state_read.history_recorder.record_trade(
+                        opp,
+                        size,
+                        Decimal::ZERO,
+                        false,
+                        None,
+                        Some(e.to_string()),
+                        false
+                    );
+                }
+
                 // Record failure
-                 let outcome = TradeOutcome {
+                let outcome = TradeOutcome {
                     timestamp: Utc::now(),
                     pair: pair_symbol,
                     profit_loss: Decimal::ZERO,
@@ -449,4 +549,15 @@ async fn main() {
 
     // Run trading loop
     run_trading_loop(state, pairs).await;
+}
+
+fn resolve_mint(symbol: &str) -> Option<Pubkey> {
+    match symbol {
+        "SOL" => Pubkey::from_str(SOL_MINT).ok(),
+        "USDC" => Pubkey::from_str(USDC_MINT).ok(),
+        "RAY" => Pubkey::from_str(RAY_MINT).ok(),
+        "ORCA" => Pubkey::from_str(ORCA_MINT).ok(),
+        "JUP" => None, // JUP mint not in constants yet, can add later or ignore
+        _ => None,
+    }
 }
