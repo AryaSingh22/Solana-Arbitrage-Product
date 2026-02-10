@@ -1,2 +1,3 @@
 - [Phase 3] Defined core Flash Loan interface (`FlashLoanProvider`, `FlashLoanQuote`) in `crates/core`.
 - [Phase 3] Implemented MockFlashLoanProvider and unit tests in crates/core/src/flash_loan.rs to facilitate testing.
+- [Phase 3] Integrated FlashLoanProvider into BotState in crates/bot, initializing a MockFlashLoanProvider.

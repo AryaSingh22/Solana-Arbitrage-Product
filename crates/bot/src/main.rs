@@ -19,6 +19,7 @@ use solana_arb_core::{
     dex::{DexManager, jupiter::JupiterProvider, raydium::RaydiumProvider, orca::OrcaProvider},
     pathfinder::PathFinder,
     risk::{RiskManager, RiskConfig, TradeDecision, TradeOutcome},
+    flash_loan::{FlashLoanProvider, MockFlashLoanProvider},
     DexType, TokenPair,
 };
 use wallet::Wallet;
@@ -32,6 +33,7 @@ struct BotState {
     dex_manager: DexManager,
     executor: Executor,
     wallet: Wallet,
+    flash_loan_provider: Box<dyn FlashLoanProvider>,
     is_running: bool,
     dry_run: bool,
     rpc_url: String,
@@ -62,6 +64,10 @@ impl BotState {
         
         info!("🔌 DexManager initialized with {} providers", dex_manager.providers().len());
 
+        // Initialize Flash Loan Provider
+        let flash_loan_provider = Box::new(MockFlashLoanProvider::new("Solend-Mock"));
+        info!("🏦 Initialized Flash Loan Provider: {}", flash_loan_provider.name());
+
         Self {
             detector: ArbitrageDetector::default(),
             path_finder: PathFinder::new(4),
@@ -75,6 +81,7 @@ impl BotState {
                 rpc_commitment: config.rpc_commitment.clone(),
             }),
             wallet: Wallet::new().expect("Failed to load wallet"),
+            flash_loan_provider,
             is_running: true,
             dry_run,
             rpc_url: config.solana_rpc_url.clone(),
