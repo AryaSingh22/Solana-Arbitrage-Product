@@ -9,7 +9,7 @@ use solana_sdk::instruction::Instruction;
 use solana_sdk::pubkey::Pubkey;
 
 #[async_trait]
-pub trait FlashLoanProvider {
+pub trait FlashLoanProvider: Send + Sync {
     /// Name of the provider (e.g., "Solend", "Mango")
     fn name(&self) -> &'static str;
 

@@ -35,6 +35,28 @@ pub struct Config {
     pub jito_block_engine_url: String,
     /// Jito tip amount in lamports
     pub jito_tip_lamports: u64,
+    /// Dry run mode
+    pub dry_run: bool,
+    /// Maximum daily loss allowed before pausing
+    pub max_daily_loss: f64,
+    /// Maximum consecutive losses before pausing
+    pub max_consecutive_losses: u32,
+    /// Whether circuit breaker is enabled
+    pub circuit_breaker_enabled: bool,
+    /// Circuit breaker cooling period in seconds
+    pub circuit_breaker_timeout_seconds: u64,
+    /// Telegram webhook URL for alerts
+    pub telegram_webhook_url: Option<String>,
+    /// Discord webhook URL for alerts
+    pub discord_webhook_url: Option<String>,
+    /// Polling interval in milliseconds
+    pub poll_interval_ms: u64,
+    /// Maximum concurrent trades
+    pub max_concurrent_trades: usize,
+    /// Enable Prometheus metrics
+    pub enable_metrics: bool,
+    /// Metrics server port
+    pub metrics_port: u16,
 }
 
 impl Config {
@@ -87,6 +109,41 @@ impl Config {
                 .unwrap_or_else(|_| "10000".to_string())
                 .parse()
                 .unwrap_or(10000),
+            dry_run: env::var("DRY_RUN")
+                .map(|v| v == "true" || v == "1")
+                .unwrap_or(true),
+            max_daily_loss: env::var("MAX_DAILY_LOSS")
+                .unwrap_or_else(|_| "500.0".to_string())
+                .parse()
+                .unwrap_or(500.0),
+            max_consecutive_losses: env::var("MAX_CONSECUTIVE_LOSSES")
+                .unwrap_or_else(|_| "5".to_string())
+                .parse()
+                .unwrap_or(5),
+            circuit_breaker_enabled: env::var("CIRCUIT_BREAKER_ENABLED")
+                .map(|v| v == "true" || v == "1")
+                .unwrap_or(true),
+            circuit_breaker_timeout_seconds: env::var("CIRCUIT_BREAKER_TIMEOUT_SECONDS")
+                .unwrap_or_else(|_| "300".to_string())
+                .parse()
+                .unwrap_or(300),
+            telegram_webhook_url: env::var("TELEGRAM_WEBHOOK_URL").ok(),
+            discord_webhook_url: env::var("DISCORD_WEBHOOK_URL").ok(),
+            poll_interval_ms: env::var("POLL_INTERVAL_MS")
+                .unwrap_or_else(|_| "500".to_string())
+                .parse()
+                .unwrap_or(500),
+            max_concurrent_trades: env::var("MAX_CONCURRENT_TRADES")
+                .unwrap_or_else(|_| "1".to_string())
+                .parse()
+                .unwrap_or(1),
+            enable_metrics: env::var("ENABLE_METRICS")
+                .map(|v| v == "true" || v == "1")
+                .unwrap_or(true),
+            metrics_port: env::var("METRICS_PORT")
+                .unwrap_or_else(|_| "9090".to_string())
+                .parse()
+                .unwrap_or(9090),
         })
     }
 }
@@ -109,6 +166,17 @@ impl Default for Config {
             use_jito: false,
             jito_block_engine_url: "https://mainnet.block-engine.jito.wtf".to_string(),
             jito_tip_lamports: 10000,
+            dry_run: true,
+            max_daily_loss: 500.0,
+            max_consecutive_losses: 5,
+            circuit_breaker_enabled: true,
+            circuit_breaker_timeout_seconds: 300,
+            telegram_webhook_url: None,
+            discord_webhook_url: None,
+            poll_interval_ms: 500,
+            max_concurrent_trades: 1,
+            enable_metrics: true,
+            metrics_port: 9090,
         }
     }
 }
