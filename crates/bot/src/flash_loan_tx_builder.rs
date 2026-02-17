@@ -7,9 +7,7 @@ use solana_sdk::{
     instruction::Instruction,
     pubkey::Pubkey,
     signature::{Keypair, Signer},
-    system_instruction,
 };
-use spl_token;
 
 #[derive(Debug)]
 pub struct FlashLoanTxBuilder {
@@ -32,7 +30,10 @@ impl FlashLoanTxBuilder {
 
         Self {
             payer,
-            solend_program_id: program_id_str.parse().unwrap(),
+            // Safety: SOLEND_PROGRAM_MAINNET and SOLEND_PROGRAM_DEVNET are valid base58 pubkeys
+            solend_program_id: program_id_str
+                .parse()
+                .expect("Solend program ID constants must be valid pubkeys"),
             is_devnet,
         }
     }
@@ -108,7 +109,7 @@ impl FlashLoanTxBuilder {
 
     fn calculate_priority_fee(
         &self,
-        opportunity: &ArbitrageOpportunity,
+        _opportunity: &ArbitrageOpportunity,
         borrow_amount: u64,
     ) -> u64 {
         // 5% of expected profit as priority fee
@@ -118,7 +119,7 @@ impl FlashLoanTxBuilder {
         let fee = (borrow_amount as f64 * 0.00025) as u64;
 
         // Cap at reasonable limits, min 50k micro-lamports
-        fee.max(50_000).min(1_000_000)
+        fee.clamp(50_000, 1_000_000)
     }
 
     fn calculate_repay_amount(&self, borrowed: u64) -> u64 {

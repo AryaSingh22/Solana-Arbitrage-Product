@@ -40,6 +40,7 @@ impl HistoryRecorder {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn record_trade(
         &self,
         opp: &ArbitrageOpportunity,
@@ -127,11 +128,9 @@ impl HistoryAnalyzer {
         let mut trades: Vec<TradeRecord> = Vec::new();
 
         use std::io::BufRead;
-        for line in reader.lines() {
-            if let Ok(line) = line {
-                if let Ok(record) = serde_json::from_str::<TradeRecord>(&line) {
-                    trades.push(record);
-                }
+        for line in reader.lines().map_while(Result::ok) {
+            if let Ok(record) = serde_json::from_str::<TradeRecord>(&line) {
+                trades.push(record);
             }
         }
 

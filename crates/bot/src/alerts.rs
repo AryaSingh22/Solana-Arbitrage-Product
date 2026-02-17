@@ -1,15 +1,26 @@
+//! Alerts Module
+//!
+//! Manages external notifications via Telegram, Discord, and other channels.
+
 use reqwest::Client;
 use serde_json::json;
 use tracing::{error, info};
 
+/// Manages system alerts via multiple channels (Telegram, Discord).
+///
+/// Provides a unified interface for sending critical alerts and informational messages
+/// to configured webhooks.
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct AlertManager {
     telegram_webhook: Option<String>,
     discord_webhook: Option<String>,
     http_client: Client,
 }
 
+#[allow(dead_code)]
 impl AlertManager {
+    /// Creates a new AlertManager with specified command-line/config webhooks.
     pub fn new(telegram_webhook: Option<String>, discord_webhook: Option<String>) -> Self {
         Self {
             telegram_webhook,
@@ -18,6 +29,7 @@ impl AlertManager {
         }
     }
 
+    /// Creates an AlertManager from environment variables.
     pub fn from_env() -> Self {
         Self {
             telegram_webhook: std::env::var("TELEGRAM_WEBHOOK_URL").ok(),
@@ -26,6 +38,7 @@ impl AlertManager {
         }
     }
     
+    /// Sends a critical alert (prefixed with "🚨 CRITICAL") to all configured channels.
     pub async fn send_critical(&self, message: &str) {
         let formatted = format!("🚨 CRITICAL: {}", message);
         error!("{}", formatted);
@@ -57,6 +70,7 @@ impl AlertManager {
         }
     }
     
+    /// Sends an informational message to all configured channels.
     pub async fn send_info(&self, message: &str) {
         let formatted = format!("ℹ️ {}", message);
         info!("{}", formatted);

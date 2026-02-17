@@ -8,8 +8,7 @@ use axum::{
 use futures::{sink::SinkExt, stream::StreamExt};
 use serde::Serialize;
 use std::sync::Arc;
-use tokio::sync::broadcast;
-use tracing::{error, info, warn};
+use tracing::info;
 
 use crate::AppState;
 use solana_arb_core::{ArbitrageOpportunity, PriceData};

@@ -8,14 +8,22 @@ use solana_sdk::signature::{Keypair, Signer};
 use std::env;
 use tracing::{info, warn};
 
-/// Wallet wrapper for simulation
+/// Wallet wrapper for simulation and live trading.
+///
+/// Handles keypair loading from environment variables or creates a simulated
+/// wallet for dry-run modes.
 pub struct Wallet {
+    /// Public key string representation.
     pub pubkey: String,
+    /// Optional keypair for signing (None in simulation or if key is missing).
     keypair: Option<Keypair>,
 }
 
 impl Wallet {
-    /// Load wallet public key from environment or generate dummy
+    /// Creates a new Wallet instance.
+    ///
+    /// Loads `PRIVATE_KEY` from environment. If missing or invalid, falls back
+    /// to a simulated wallet.
     pub fn new() -> Result<Self> {
         let pk_str = env::var("PRIVATE_KEY").ok();
 
@@ -52,10 +60,12 @@ impl Wallet {
         Ok(Self { pubkey, keypair })
     }
 
+    /// Returns the public key as a string.
     pub fn pubkey(&self) -> String {
         self.pubkey.clone()
     }
 
+    /// Returns the keypair for signing, if available.
     pub fn signer(&self) -> Option<&Keypair> {
         self.keypair.as_ref()
     }

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
+use crate::events::{EventBus, TradingEvent};
 
 #[derive(Debug, Clone)]
 pub enum CircuitState {
@@ -19,6 +20,7 @@ pub struct CircuitBreaker {
     consecutive_failures: Arc<RwLock<usize>>,
     consecutive_successes: Arc<RwLock<usize>>,
     last_failure_time: Arc<RwLock<Option<Instant>>>,
+    event_bus: Arc<RwLock<Option<Arc<EventBus>>>>,
 }
 
 impl CircuitBreaker {
@@ -31,7 +33,12 @@ impl CircuitBreaker {
             consecutive_failures: Arc::new(RwLock::new(0)),
             consecutive_successes: Arc::new(RwLock::new(0)),
             last_failure_time: Arc::new(RwLock::new(None)),
+            event_bus: Arc::new(RwLock::new(None)),
         }
+    }
+
+    pub async fn set_event_bus(&self, bus: Arc<EventBus>) {
+        *self.event_bus.write().await = Some(bus);
     }
 
     pub async fn record_success(&self) {
@@ -47,6 +54,13 @@ impl CircuitBreaker {
             if matches!(*state, CircuitState::HalfOpen) {
                 *state = CircuitState::Closed;
                 tracing::info!("Circuit breaker CLOSED - system recovered");
+                
+                if let Some(bus) = self.event_bus.read().await.as_ref() {
+                    bus.publish(TradingEvent::CircuitBreakerStateChanged {
+                        old_state: "HalfOpen".to_string(),
+                        new_state: "Closed".to_string(),
+                    });
+                }
             }
         }
     }
@@ -65,9 +79,15 @@ impl CircuitBreaker {
             let mut state = self.state.write().await;
             *state = CircuitState::Open;
             tracing::error!(
-                failures = *failures,
                 "Circuit breaker OPEN - trading halted"
             );
+
+            if let Some(bus) = self.event_bus.read().await.as_ref() {
+                bus.publish(TradingEvent::CircuitBreakerStateChanged {
+                    old_state: "Closed".to_string(), // Could refer to previous state, but record_failure usually from Closed/HalfOpen
+                    new_state: "Open".to_string(),
+                });
+            }
         }
     }
 
@@ -82,6 +102,14 @@ impl CircuitBreaker {
                     if last_failure.elapsed() >= self.timeout {
                         *state = CircuitState::HalfOpen;
                         tracing::warn!("Circuit breaker HALF-OPEN - testing recovery");
+                        
+                        if let Some(bus) = self.event_bus.read().await.as_ref() {
+                            bus.publish(TradingEvent::CircuitBreakerStateChanged {
+                                old_state: "Open".to_string(),
+                                new_state: "HalfOpen".to_string(),
+                            });
+                        }
+                        
                         true
                     } else {
                         false

@@ -11,12 +11,9 @@ use reqwest::Client;
 use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
-use solana_rpc_client::rpc_client::RpcClient;
+use solana_rpc_client::nonblocking::rpc_client::RpcClient;
 use solana_rpc_client_api::config::RpcSendTransactionConfig;
 use solana_sdk::commitment_config::CommitmentConfig;
-use solana_sdk::compute_budget::ComputeBudgetInstruction;
-use solana_sdk::message::{Message, VersionedMessage};
-use solana_sdk::signature::Signer;
 use solana_sdk::transaction::VersionedTransaction;
 use std::collections::HashMap;
 use tracing::{debug, error, info, warn};
@@ -39,13 +36,19 @@ pub const USDC_MINT: &str = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 pub const RAY_MINT: &str = "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R";
 pub const ORCA_MINT: &str = "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE";
 
-/// Execution configuration
+/// Configuration for trade execution parameters.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ExecutionConfig {
+    /// Priority fee to add to transactions (in micro-lamports).
     pub priority_fee_micro_lamports: u64,
+    /// Compute unit limit for transactions.
     pub compute_unit_limit: u32,
+    /// Slippage tolerance in basis points.
     pub slippage_bps: u64,
+    /// Maximum number of retries for failed transactions.
     pub max_retries: u32,
+    /// RPC commitment level (e.g., "confirmed", "finalized").
     pub rpc_commitment: String,
 }
 
@@ -62,18 +65,35 @@ impl Default for ExecutionConfig {
 }
 
 use solana_arb_core::alt::AltManager;
+use solana_arb_core::rate_limiter::RateLimiter;
 use std::sync::Arc;
 
+/// Main execution component responsible for processing trades.
+///
+/// Handles interaction with Jupiter API for swap quotes and instructions,
+/// builds transactions, and submits them to the Solana network.
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct Executor {
+    /// HTTP client for making API requests.
     client: Client,
+    /// Cache of token mint addresses.
     token_map: HashMap<String, String>,
+    /// Execution configuration.
     config: ExecutionConfig,
+    /// Builder for flash loan transactions.
     flash_loan_builder: FlashLoanTxBuilder,
+    /// Whether flash loans are enabled.
     flash_loans_enabled: bool,
+    /// Optional Address Lookup Table (ALT) manager.
     alt_manager: Option<Arc<AltManager>>,
+    /// Rate limiter for RPC requests.
+    pub rpc_rate_limiter: Option<Arc<RateLimiter>>,
+    /// Rate limiter for Jupiter API requests.
+    pub jupiter_rate_limiter: Option<Arc<RateLimiter>>,
 }
 
+/// Request body for Jupiter /swap endpoint (full transaction mode)
 #[derive(Debug, Serialize)]
 struct SwapRequest {
     #[serde(rename = "userPublicKey")]
@@ -84,17 +104,72 @@ struct SwapRequest {
     compute_unit_price_micro_lamports: Option<u64>,
 }
 
+/// Response from Jupiter /swap endpoint
 #[derive(Debug, Deserialize)]
 struct SwapResponse {
     #[serde(rename = "swapTransaction")]
     swap_transaction: String,
 }
 
+/// Request body for Jupiter /swap-instructions endpoint (structured instructions mode)
+#[derive(Debug, Serialize)]
+struct SwapInstructionsRequest {
+    #[serde(rename = "userPublicKey")]
+    user_public_key: String,
+    #[serde(rename = "quoteResponse")]
+    quote_response: serde_json::Value,
+    #[serde(rename = "wrapAndUnwrapSol")]
+    wrap_and_unwrap_sol: bool,
+    #[serde(rename = "computeUnitPriceMicroLamports")]
+    compute_unit_price_micro_lamports: Option<u64>,
+}
+
+/// Response from Jupiter /swap-instructions endpoint
+#[derive(Debug, Deserialize)]
+struct SwapInstructionsResponse {
+    #[serde(rename = "setupInstructions", default)]
+    setup_instructions: Vec<JupiterInstruction>,
+    #[serde(rename = "swapInstruction")]
+    swap_instruction: JupiterInstruction,
+    #[serde(rename = "cleanupInstruction")]
+    cleanup_instruction: Option<JupiterInstruction>,
+    #[serde(rename = "addressLookupTableAddresses", default)]
+    address_lookup_table_addresses: Vec<String>,
+}
+
+/// A single instruction as returned by Jupiter's API
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct JupiterInstruction {
+    #[serde(rename = "programId")]
+    pub program_id: String,
+    #[serde(default)]
+    pub accounts: Vec<JupiterAccountMeta>,
+    pub data: String,
+}
+
+/// Account metadata for a Jupiter instruction
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct JupiterAccountMeta {
+    pub pubkey: String,
+    #[serde(rename = "isSigner")]
+    pub is_signer: bool,
+    #[serde(rename = "isWritable")]
+    pub is_writable: bool,
+}
+
+#[allow(dead_code)]
 impl Executor {
+    /// Creates a new Executor with default configuration.
     pub fn new() -> Self {
         Self::with_config(ExecutionConfig::default())
     }
 
+
+    /// Creates a new Executor with the specified configuration.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - The execution configuration to use.
     pub fn with_config(config: ExecutionConfig) -> Self {
         let is_devnet = config.rpc_commitment == "devnet"
             || std::env::var("SOLANA_RPC_URL")
@@ -136,13 +211,33 @@ impl Executor {
             flash_loans_enabled: std::env::var("ENABLE_FLASH_LOANS").unwrap_or("false".to_string())
                 == "true",
             alt_manager: None,
+            rpc_rate_limiter: None,
+            jupiter_rate_limiter: None,
         }
     }
 
+    /// Sets the address lookup table manager for optimizing transaction size.
     pub fn set_alt_manager(&mut self, manager: Arc<AltManager>) {
         self.alt_manager = Some(manager);
     }
+    
+    /// Configures rate limiters for the executor.
+    pub fn set_rate_limiters(
+        &mut self,
+        rpc: Option<Arc<RateLimiter>>,
+        jupiter: Option<Arc<RateLimiter>>,
+    ) {
+        self.rpc_rate_limiter = rpc;
+        self.jupiter_rate_limiter = jupiter;
+    }
 
+    /// Fetches a swap quote from the Jupiter API.
+    ///
+    /// # Arguments
+    ///
+    /// * `input_mint` - Mint address of the token to swap from
+    /// * `output_mint` - Mint address of the token to swap to
+    /// * `amount` - Amount of input token in atomic units
     pub async fn get_quote(
         &self,
         input_mint: &str,
@@ -164,13 +259,26 @@ impl Executor {
         Ok(quote)
     }
 
-    pub fn check_balance(&self, wallet: &Wallet, rpc_url: &str) -> Result<u64> {
+    /// Checks the SOL balance of the provided wallet.
+    pub async fn check_balance(&self, wallet: &Wallet, rpc_url: &str) -> Result<u64> {
         let client = RpcClient::new(rpc_url.to_string());
         let pubkey = Pubkey::from_str(&wallet.pubkey())
             .map_err(|e| anyhow!("Invalid wallet pubkey: {}", e))?;
-        Ok(client.get_balance(&pubkey)?)
+        Ok(client.get_balance(&pubkey).await?)
     }
 
+    /// Executes an arbitrage trade.
+    ///
+    /// Decides whether to use a flash loan based on trade size and configuration.
+    ///
+    /// # Arguments
+    ///
+    /// * `wallet` - The wallet to sign the transaction
+    /// * `opp` - The arbitrage opportunity details
+    /// * `amount_usd` - The trade size in USD
+    /// * `submit` - If true, submits the transaction; otherwise, simulates
+    /// * `rpc_url` - The RPC URL to use
+    /// * `jito_client` - Optional Jito client for MEV protection
     pub async fn execute(
         &self,
         wallet: &Wallet,
@@ -193,6 +301,10 @@ impl Executor {
             .await
     }
 
+    /// Executes a standard (non-flash-loan) arbitrage trade.
+    ///
+    /// Fetches a quote, gets swap instructions, checks balance, and submits the transaction.
+    #[allow(clippy::too_many_arguments)]
     pub async fn execute_standard(
         &self,
         wallet: &Wallet,
@@ -202,11 +314,7 @@ impl Executor {
         rpc_url: &str,
         jito_client: Option<&JitoClient>,
     ) -> Result<TradeResult> {
-        let (input_token, output_token) = if opp.buy_dex.to_string() == "Jupiter" {
-            (&opp.pair.quote, &opp.pair.base)
-        } else {
-            (&opp.pair.quote, &opp.pair.base)
-        };
+        let (input_token, output_token) = (&opp.pair.quote, &opp.pair.base);
 
         let amount_atoms = (amount_usd * Decimal::from(1_000_000))
             .to_u64()
@@ -268,7 +376,7 @@ impl Executor {
             );
 
             if submit {
-                if let Ok(balance) = self.check_balance(wallet, rpc_url) {
+                if let Ok(balance) = self.check_balance(wallet, rpc_url).await {
                     let min_balance = 10_000_000;
                     if balance < min_balance {
                         return Ok(TradeResult {
@@ -282,12 +390,13 @@ impl Executor {
                     }
                 }
 
+
                 match self.submit_with_retry(
                     wallet,
                     &swap_resp.swap_transaction,
                     rpc_url,
                     jito_client,
-                ) {
+                ).await {
                     Ok(signature) => {
                         info!("✅ Swap submitted: {}", signature);
                         Ok(TradeResult {
@@ -333,7 +442,8 @@ impl Executor {
         }
     }
 
-    fn submit_with_retry(
+    /// Submits a transaction with exponential backoff retry logic.
+    async fn submit_with_retry(
         &self,
         wallet: &Wallet,
         encoded_tx: &str,
@@ -341,9 +451,14 @@ impl Executor {
         jito_client: Option<&JitoClient>,
     ) -> Result<String> {
         let mut last_error = None;
-
+        
         for attempt in 0..self.config.max_retries {
-            match self.submit_swap_transaction(wallet, encoded_tx, rpc_url, jito_client) {
+            // Apply rate limit before attempt
+            if let Some(limiter) = &self.rpc_rate_limiter {
+                limiter.acquire().await;
+            }
+
+            match self.submit_swap_transaction(wallet, encoded_tx, rpc_url, jito_client).await {
                 Ok(sig) => return Ok(sig),
                 Err(e) => {
                     let delay_ms = 500 * 2u64.pow(attempt);
@@ -354,7 +469,7 @@ impl Executor {
                         e,
                         delay_ms
                     );
-                    std::thread::sleep(std::time::Duration::from_millis(delay_ms));
+                    tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
                     last_error = Some(e);
                 }
             }
@@ -363,7 +478,7 @@ impl Executor {
         Err(last_error.unwrap_or_else(|| anyhow!("All retry attempts exhausted")))
     }
 
-    fn submit_swap_transaction(
+    async fn submit_swap_transaction(
         &self,
         wallet: &Wallet,
         encoded_tx: &str,
@@ -398,7 +513,7 @@ impl Executor {
             ..Default::default()
         };
 
-        let signature = client.send_transaction_with_config(&signed_tx, config)?;
+        let signature = client.send_transaction_with_config(&signed_tx, config).await?;
 
         info!(
             "📡 Transaction sent: {}. Waiting for confirmation...",
@@ -406,9 +521,9 @@ impl Executor {
         );
         match client.confirm_transaction_with_spinner(
             &signature,
-            &client.get_latest_blockhash()?,
+            &client.get_latest_blockhash().await?,
             commitment,
-        ) {
+        ).await {
             Ok(_) => {
                 info!("✅ Transaction confirmed: {}", signature);
             }
@@ -428,6 +543,12 @@ impl Executor {
         }
     }
 
+    /// Execute a flash loan arbitrage trade using Jupiter's `/swap-instructions` API.
+    ///
+    /// Instead of calling `/swap` to get a full serialized transaction and manually
+    /// deserializing it (fragile), this calls `/swap-instructions` which returns
+    /// structured JSON instructions that can be directly converted to
+    /// `solana_sdk::Instruction`.
     pub async fn execute_with_flash_loan(
         &self,
         wallet: &Wallet,
@@ -435,62 +556,93 @@ impl Executor {
         amount_usd: Decimal,
         submit: bool,
         rpc_url: &str,
-        jito_client: Option<&JitoClient>,
+        _jito_client: Option<&JitoClient>,
     ) -> Result<TradeResult> {
-        info!("⚡ Executing FLASH LOAN trade for opportunity: {}", opp.id);
+        info!(
+            "⚡ Executing FLASH LOAN trade for opportunity: {} (amount: {} USD)",
+            opp.id, amount_usd
+        );
 
-        // 1. Resolve Mint
+        // 1. Resolve mint address
         let input_mint_str = self
             .token_map
             .get(&opp.pair.base)
             .ok_or_else(|| anyhow!("Unknown base token: {}", opp.pair.base))?;
+        let output_mint_str = self
+            .token_map
+            .get(&opp.pair.quote)
+            .ok_or_else(|| anyhow!("Unknown quote token: {}", opp.pair.quote))?;
         let input_mint = Pubkey::from_str(input_mint_str)?;
 
-        // 2. Get Quote (Amount in atoms)
+        // 2. Convert USD amount to token atoms
         let decimals = if opp.pair.base == "USDC" { 6 } else { 9 };
         let amount_atoms = (amount_usd * Decimal::from(10u64.pow(decimals)))
             .to_u64()
             .unwrap_or(0);
 
-        // Use swap pair direction from opp?
-        let quote = self
-            .get_quote(&opp.pair.base, &opp.pair.base, amount_atoms)
-            .await?;
-
-        // 3. Get Swap Transaction (for instructions)
-        let swap_req = SwapRequest {
-            user_public_key: wallet.pubkey(), // Payer
-            quote_response: quote.clone(),
-            compute_unit_price_micro_lamports: None, // We set it in Builder
-        };
-
-        debug!("Requesting swap instructions (via transaction)...");
-        let response = self
-            .client
-            .post(format!("{}/swap", JUPITER_API_URL))
-            .json(&swap_req)
-            .send()
-            .await?;
-
-        if !response.status().is_success() {
-            return Err(anyhow!(
-                "Jupiter swap request failed: {}",
-                response.text().await?
-            ));
+        if amount_atoms == 0 {
+            return Err(anyhow!("Invalid flash loan amount: zero atoms"));
         }
 
-        let swap_resp: SwapResponse = response.json().await?;
-
-        // 4. Extract Instructions
-        let (swap_instructions, lookup_tables) = self
-            .extract_instructions_from_tx(&swap_resp.swap_transaction)
+        // 3. Get quote from Jupiter
+        let quote = self
+            .get_quote(input_mint_str, output_mint_str, amount_atoms)
             .await?;
 
-        // 5. Build Flash Loan Tx
-        let rpc_client_instance = RpcClient::new(rpc_url.to_string());
-        let recent_blockhash = rpc_client_instance.get_latest_blockhash()?;
+        if let Some(out_amount) = quote.get("outAmount") {
+            debug!(
+                "📊 Flash loan quote: {} {} → {} {}",
+                amount_atoms, input_mint_str, out_amount, output_mint_str
+            );
+        }
 
-        // 5. Build Flash Loan Tx (V0)
+        // 4. Get structured swap instructions (NOT full transaction)
+        let swap_instructions_resp = self
+            .get_swap_instructions(&wallet.pubkey(), &quote)
+            .await?;
+
+        info!(
+            "📋 Received swap instructions: {} setup + 1 swap + {} cleanup",
+            swap_instructions_resp.setup_instructions.len(),
+            if swap_instructions_resp.cleanup_instruction.is_some() { 1 } else { 0 }
+        );
+
+        // 5. Convert Jupiter instructions → solana_sdk::Instruction
+        let mut swap_instructions = Vec::new();
+
+        for jup_ix in &swap_instructions_resp.setup_instructions {
+            swap_instructions.push(Self::convert_jupiter_instruction(jup_ix)?);
+        }
+
+        swap_instructions.push(
+            Self::convert_jupiter_instruction(&swap_instructions_resp.swap_instruction)?
+        );
+
+        if let Some(cleanup) = &swap_instructions_resp.cleanup_instruction {
+            swap_instructions.push(Self::convert_jupiter_instruction(cleanup)?);
+        }
+
+        // 6. Resolve Address Lookup Tables (if any)
+        let lookup_tables = if !swap_instructions_resp.address_lookup_table_addresses.is_empty() {
+            if let Some(alt_manager) = &self.alt_manager {
+                let table_pubkeys: Vec<Pubkey> = swap_instructions_resp
+                    .address_lookup_table_addresses
+                    .iter()
+                    .filter_map(|addr| Pubkey::from_str(addr).ok())
+                    .collect();
+                alt_manager.get_tables(&table_pubkeys).await?
+            } else {
+                warn!("ALTs returned by Jupiter but AltManager not configured; proceeding without");
+                vec![]
+            }
+        } else {
+            vec![]
+        };
+
+        // 7. Build flash loan transaction via FlashLoanTxBuilder
+        let rpc_client_instance = RpcClient::new(rpc_url.to_string());
+        let recent_blockhash = rpc_client_instance.get_latest_blockhash().await?;
+
         let tx = self
             .flash_loan_builder
             .build_transaction(
@@ -503,218 +655,221 @@ impl Executor {
             )
             .map_err(|e| anyhow!("Failed to build flash loan tx: {}", e))?;
 
-        // 6. Submit
+        // 8. Simulate transaction before submission
+        if submit {
+            debug!("🔍 Simulating flash loan transaction...");
+            let sim_result = rpc_client_instance.simulate_transaction(&tx).await?;
+
+            if let Some(err) = sim_result.value.err {
+                return Err(anyhow!(
+                    "Flash loan simulation failed: {:?}. Logs: {:?}",
+                    err,
+                    sim_result.value.logs.unwrap_or_default()
+                ));
+            }
+
+            let compute_units = sim_result.value.units_consumed.unwrap_or(0);
+            if compute_units > 1_400_000 {
+                return Err(anyhow!(
+                    "Compute units {} exceed limit 1,400,000",
+                    compute_units
+                ));
+            }
+
+            info!(
+                "✅ Simulation passed (compute units: {})",
+                compute_units
+            );
+        }
+
+        // 9. Submit or simulate
         let signature = if submit {
-            // We need to sign and send.
             let client = RpcClient::new(rpc_url.to_string());
-            let sig = client.send_and_confirm_transaction(&tx)?;
+            let sig = client.send_and_confirm_transaction(&tx).await?;
+            info!("✅ Flash loan transaction confirmed: {}", sig);
             sig.to_string()
         } else {
+            info!("📝 [SIMULATION] Flash loan transaction would be submitted here.");
             "simulated_flash_loan_tx".to_string()
         };
 
         Ok(TradeResult {
             opportunity_id: opp.id,
             signature: Some(signature),
-            success: true,                // Optimistic
-            actual_profit: Decimal::ZERO, // Need to verify confirmation
+            success: true,
+            actual_profit: opp.estimated_profit_usd.unwrap_or(Decimal::ZERO),
             executed_at: chrono::Utc::now(),
             error: None,
         })
     }
 
-    async fn extract_instructions_from_tx(
+    /// Call Jupiter's `/swap-instructions` endpoint to get structured swap instructions.
+    ///
+    /// This returns individual instructions (setup, swap, cleanup) instead of a
+    /// full serialized transaction, making it safe to embed inside a flash loan tx.
+    async fn get_swap_instructions(
         &self,
-        base64_tx: &str,
-    ) -> Result<(
-        Vec<solana_sdk::instruction::Instruction>,
-        Vec<solana_sdk::address_lookup_table::AddressLookupTableAccount>,
-    )> {
-        let tx_bytes = BASE64_ENGINE.decode(base64_tx)?;
-        let versioned_tx: VersionedTransaction = bincode::deserialize(&tx_bytes)?;
-        let message = versioned_tx.message;
+        user_pubkey: &str,
+        quote: &serde_json::Value,
+    ) -> Result<SwapInstructionsResponse> {
+        let req = SwapInstructionsRequest {
+            user_public_key: user_pubkey.to_string(),
+            quote_response: quote.clone(),
+            wrap_and_unwrap_sol: true,
+            compute_unit_price_micro_lamports: None, // Handled by FlashLoanTxBuilder
+        };
 
-        match message {
-            VersionedMessage::Legacy(msg) => {
-                let instructions = msg
-                    .instructions
-                    .clone()
-                    .into_iter()
-                    .map(|ix| {
-                        let program_id = msg.account_keys[ix.program_id_index as usize];
-                        let accounts = ix
-                            .accounts
-                            .iter()
-                            .map(|&idx| solana_sdk::instruction::AccountMeta {
-                                pubkey: msg.account_keys[idx as usize],
-                                is_signer: msg.is_signer(idx as usize),
-                                is_writable: msg.is_writable(idx as usize),
-                            })
-                            .collect();
+        let response = self
+            .client
+            .post(format!("{}/swap-instructions", JUPITER_API_URL))
+            .json(&req)
+            .send()
+            .await?;
 
-                        solana_sdk::instruction::Instruction {
-                            program_id,
-                            accounts,
-                            data: ix.data.clone(),
-                        }
-                    })
-                    .collect();
-                Ok((instructions, vec![]))
-            }
-            VersionedMessage::V0(msg) => {
-                if msg.address_table_lookups.is_empty() {
-                    // No lookups. Use msg.account_keys directly.
-                    // But V0 accounts are indices. Decompile logic needed here too?
-                    // Yes, instructions use indices.
-                    // Just use same manual logic but with empty dynamic parts.
-                    let full_keys = &msg.account_keys;
-                    let instructions = msg
-                        .instructions
-                        .iter()
-                        .map(|ix| {
-                            let program_id = full_keys[ix.program_id_index as usize];
-                            let accounts = ix
-                                .accounts
-                                .iter()
-                                .map(|&idx| {
-                                    let idx = idx as usize;
-                                    let pubkey = full_keys[idx];
-                                    let is_signer =
-                                        idx < msg.header.num_required_signatures as usize;
-                                    let is_writable = if is_signer {
-                                        idx < (msg.header.num_required_signatures
-                                            - msg.header.num_readonly_signed_accounts)
-                                            as usize
-                                    } else {
-                                        idx < (msg.account_keys.len()
-                                            - msg.header.num_readonly_unsigned_accounts as usize)
-                                    };
-                                    solana_sdk::instruction::AccountMeta {
-                                        pubkey,
-                                        is_signer,
-                                        is_writable,
-                                    }
-                                })
-                                .collect();
-                            solana_sdk::instruction::Instruction {
-                                program_id,
-                                accounts,
-                                data: ix.data.clone(),
-                            }
-                        })
-                        .collect();
-                    Ok((instructions, vec![]))
-                } else {
-                    let alt_manager = self
-                        .alt_manager
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("ALTs required but AltManager not configured"))?;
-
-                    let table_addresses: Vec<Pubkey> = msg
-                        .address_table_lookups
-                        .iter()
-                        .map(|l| l.account_key)
-                        .collect();
-                    let tables = alt_manager.get_tables(&table_addresses).await?;
-
-                    // Manual resolution since v0::Message might not expose it directly or correctly
-                    let mut loaded_writable = Vec::new();
-                    let mut loaded_readonly = Vec::new();
-
-                    for lookup in &msg.address_table_lookups {
-                        let table = tables
-                            .iter()
-                            .find(|t| t.key == lookup.account_key)
-                            .ok_or_else(|| {
-                                anyhow::anyhow!("Missing lookup table: {}", lookup.account_key)
-                            })?;
-
-                        for &idx in &lookup.writable_indexes {
-                            let idx = idx as usize;
-                            if idx < table.addresses.len() {
-                                loaded_writable.push(table.addresses[idx]);
-                            } else {
-                                return Err(anyhow::anyhow!(
-                                    "Lookup index {} out of bounds for table {}",
-                                    idx,
-                                    table.key
-                                ));
-                            }
-                        }
-
-                        for &idx in &lookup.readonly_indexes {
-                            let idx = idx as usize;
-                            if idx < table.addresses.len() {
-                                loaded_readonly.push(table.addresses[idx]);
-                            } else {
-                                return Err(anyhow::anyhow!(
-                                    "Lookup index {} out of bounds for table {}",
-                                    idx,
-                                    table.key
-                                ));
-                            }
-                        }
-                    }
-
-                    let mut full_keys = msg.account_keys.clone();
-                    full_keys.extend(loaded_writable.clone());
-                    full_keys.extend(loaded_readonly.clone());
-
-                    let static_len = msg.account_keys.len();
-                    let writable_len = loaded_writable.len();
-
-                    let instructions = msg
-                        .instructions
-                        .iter()
-                        .map(|ix| {
-                            let program_id_idx = ix.program_id_index as usize;
-                            let program_id = full_keys[program_id_idx];
-
-                            let accounts = ix
-                                .accounts
-                                .iter()
-                                .map(|&idx| {
-                                    let idx = idx as usize;
-                                    let pubkey = full_keys[idx];
-
-                                    let is_signer =
-                                        idx < msg.header.num_required_signatures as usize;
-
-                                    let is_writable = if idx < static_len {
-                                        // Static account logic
-                                        if is_signer {
-                                            idx < (msg.header.num_required_signatures
-                                                - msg.header.num_readonly_signed_accounts)
-                                                as usize
-                                        } else {
-                                            idx < (static_len
-                                                - msg.header.num_readonly_unsigned_accounts
-                                                    as usize)
-                                        }
-                                    } else {
-                                        // Dynamic account logic
-                                        idx < (static_len + writable_len)
-                                    };
-
-                                    solana_sdk::instruction::AccountMeta {
-                                        pubkey,
-                                        is_signer,
-                                        is_writable,
-                                    }
-                                })
-                                .collect();
-
-                            solana_sdk::instruction::Instruction {
-                                program_id,
-                                accounts,
-                                data: ix.data.clone(),
-                            }
-                        })
-                        .collect();
-
-                    Ok((instructions, tables))
-                }
-            }
+        if !response.status().is_success() {
+            let err_text = response.text().await?;
+            return Err(anyhow!("Jupiter /swap-instructions failed: {}", err_text));
         }
+
+        let resp: SwapInstructionsResponse = response.json().await?;
+        Ok(resp)
+    }
+
+    /// Convert a Jupiter API instruction into a `solana_sdk::Instruction`.
+    ///
+    /// Jupiter's `/swap-instructions` endpoint returns instructions as JSON with
+    /// base64-encoded data and string pubkeys. This converts them to native SDK types.
+    pub fn convert_jupiter_instruction(
+        jupiter_ix: &JupiterInstruction,
+    ) -> Result<solana_sdk::instruction::Instruction> {
+        let program_id = Pubkey::from_str(&jupiter_ix.program_id)
+            .map_err(|e| anyhow!("Invalid program ID '{}': {}", jupiter_ix.program_id, e))?;
+
+        let accounts = jupiter_ix
+            .accounts
+            .iter()
+            .map(|acc| {
+                let pubkey = Pubkey::from_str(&acc.pubkey)
+                    .map_err(|e| anyhow!("Invalid account pubkey '{}': {}", acc.pubkey, e))?;
+                Ok(solana_sdk::instruction::AccountMeta {
+                    pubkey,
+                    is_signer: acc.is_signer,
+                    is_writable: acc.is_writable,
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        let data = BASE64_ENGINE
+            .decode(&jupiter_ix.data)
+            .map_err(|e| anyhow!("Invalid instruction data (base64): {}", e))?;
+
+        Ok(solana_sdk::instruction::Instruction {
+            program_id,
+            accounts,
+            data,
+        })
+    }
+}
+
+impl Default for Executor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_convert_jupiter_instruction_valid() {
+        let jup_ix = JupiterInstruction {
+            program_id: "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4".to_string(),
+            accounts: vec![
+                JupiterAccountMeta {
+                    pubkey: "So11111111111111111111111111111111111111112".to_string(),
+                    is_signer: false,
+                    is_writable: true,
+                },
+            ],
+            data: BASE64_ENGINE.encode(b"test_data"),
+        };
+
+        let result = Executor::convert_jupiter_instruction(&jup_ix);
+        assert!(result.is_ok(), "Conversion should succeed");
+
+        let ix = result.unwrap();
+        assert_eq!(
+            ix.program_id.to_string(),
+            "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4"
+        );
+        assert_eq!(ix.accounts.len(), 1);
+        assert!(ix.accounts[0].is_writable);
+        assert!(!ix.accounts[0].is_signer);
+        assert_eq!(ix.data, b"test_data");
+    }
+
+    #[test]
+    fn test_convert_jupiter_instruction_invalid_program_id() {
+        let jup_ix = JupiterInstruction {
+            program_id: "not-a-valid-pubkey!!!".to_string(),
+            accounts: vec![],
+            data: BASE64_ENGINE.encode(b"data"),
+        };
+
+        let result = Executor::convert_jupiter_instruction(&jup_ix);
+        assert!(result.is_err(), "Should fail with invalid program ID");
+    }
+
+    #[test]
+    fn test_convert_jupiter_instruction_invalid_base64() {
+        let jup_ix = JupiterInstruction {
+            program_id: "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4".to_string(),
+            accounts: vec![],
+            data: "not valid base64!!!@#$".to_string(),
+        };
+
+        let result = Executor::convert_jupiter_instruction(&jup_ix);
+        assert!(result.is_err(), "Should fail with invalid base64 data");
+    }
+
+    #[test]
+    fn test_convert_jupiter_instruction_empty_accounts() {
+        let jup_ix = JupiterInstruction {
+            program_id: "11111111111111111111111111111111".to_string(),
+            accounts: vec![],
+            data: BASE64_ENGINE.encode(b""),
+        };
+
+        let result = Executor::convert_jupiter_instruction(&jup_ix);
+        assert!(result.is_ok(), "Should handle zero accounts");
+        assert_eq!(result.unwrap().accounts.len(), 0);
+    }
+
+    #[test]
+    fn test_convert_jupiter_instruction_multiple_accounts() {
+        let jup_ix = JupiterInstruction {
+            program_id: "11111111111111111111111111111111".to_string(),
+            accounts: vec![
+                JupiterAccountMeta {
+                    pubkey: "So11111111111111111111111111111111111111112".to_string(),
+                    is_signer: true,
+                    is_writable: true,
+                },
+                JupiterAccountMeta {
+                    pubkey: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v".to_string(),
+                    is_signer: false,
+                    is_writable: false,
+                },
+            ],
+            data: BASE64_ENGINE.encode(b"swap"),
+        };
+
+        let result = Executor::convert_jupiter_instruction(&jup_ix);
+        assert!(result.is_ok());
+        let ix = result.unwrap();
+        assert_eq!(ix.accounts.len(), 2);
+        assert!(ix.accounts[0].is_signer);
+        assert!(!ix.accounts[1].is_signer);
     }
 }

@@ -1,16 +1,20 @@
 use async_trait::async_trait;
-use rust_decimal::Decimal;
 use solana_arb_core::{
     dex::DexProvider,
     error::ArbitrageError,
     types::{DexType, PriceData, TokenPair},
     ArbitrageResult,
 };
-use std::sync::Arc;
 use tokio::sync::mpsc;
 
 pub struct MeteoraProvider {
     // Placeholder
+}
+
+impl Default for MeteoraProvider {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl MeteoraProvider {

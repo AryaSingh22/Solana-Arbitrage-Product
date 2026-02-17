@@ -16,8 +16,10 @@ async fn metrics_handler(
     let metric_families = metrics.registry().gather();
     let mut buffer = Vec::new();
 
-    // In a real app we might handle error better, but unwrap is safe for memory buffer
-    encoder.encode(&metric_families, &mut buffer).unwrap();
+    if let Err(e) = encoder.encode(&metric_families, &mut buffer) {
+        tracing::error!("Failed to encode Prometheus metrics: {}", e);
+        buffer = format!("# Error encoding metrics: {}\n", e).into_bytes();
+    }
 
     (
         [(

@@ -5,14 +5,13 @@ use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal;
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
-    pubkey::Pubkey,
-    system_program, sysvar,
+    pubkey::Pubkey, sysvar,
 };
-use spl_token;
 use std::str::FromStr;
 use tracing::info;
 
 /// Solend flash loan implementation
+#[allow(dead_code)]
 pub struct SolendFlashLoan {
     program_id: Pubkey,
     lending_market: Pubkey,

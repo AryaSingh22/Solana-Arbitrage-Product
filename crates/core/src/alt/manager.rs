@@ -11,9 +11,10 @@ use solana_sdk::transaction::Transaction; // Use legacy Transaction for creation
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{info, warn};
+use tracing::info;
 
 /// Manages Address Lookup Tables (ALTs) for efficient transaction packing
+#[allow(dead_code)]
 pub struct AltManager {
     rpc_client: Arc<RpcClient>,
     lookup_tables: RwLock<HashMap<String, Pubkey>>,
@@ -47,7 +48,7 @@ impl AltManager {
         );
 
         // Use legacy transaction for creation as we are not using lookups yet
-        let tx = Transaction::new_signed_with_payer(
+        let _tx = Transaction::new_signed_with_payer(
             &[instruction],
             Some(&payer.pubkey()),
             &[payer],

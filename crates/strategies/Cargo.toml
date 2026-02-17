@@ -12,3 +12,6 @@ anyhow = { workspace = true }
 tracing = { workspace = true }
 rust_decimal = { workspace = true }
 serde = { workspace = true }
+chrono = { workspace = true }
+uuid = { version = "1", features = ["v4"] }
+

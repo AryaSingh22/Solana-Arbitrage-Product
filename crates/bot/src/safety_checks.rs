@@ -1,9 +1,19 @@
+//! Safety Checks Module
+//!
+//! Provides pre-flight checks and ongoing safety validations for the trading bot.
+
 use anyhow::{Result, anyhow};
 use solana_rpc_client::nonblocking::rpc_client::RpcClient;
 use solana_arb_core::config::Config;
-use tracing::{info, warn};
+use tracing::info;
 use std::path::Path;
 
+/// Runs a series of pre-flight checks to ensure the environment is safe for trading.
+///
+/// Checks include:
+/// - RPC connectivity
+/// - Configuration validity (dry-run, circuit breaker)
+/// - Kill switch presence
 pub async fn run_preflight_checks(
     rpc_client: &RpcClient,
     config: &Config

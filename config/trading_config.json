@@ -1,0 +1,26 @@
+{
+    "version": "1.0.0",
+    "trading": {
+        "enabled": true,
+        "max_position_size": 1000,
+        "min_profit_bps": 50,
+        "max_slippage_bps": 100
+    },
+    "risk": {
+        "circuit_breaker_enabled": true,
+        "max_consecutive_losses": 5,
+        "max_daily_loss": 500.0,
+        "var_limit_percent": 2.0
+    },
+    "performance": {
+        "poll_interval_ms": 500,
+        "enable_websocket": true,
+        "enable_parallel_fetching": true
+    },
+    "alerts": {
+        "telegram_enabled": true,
+        "discord_enabled": false,
+        "alert_on_profit": 50.0,
+        "alert_on_loss": 10.0
+    }
+}

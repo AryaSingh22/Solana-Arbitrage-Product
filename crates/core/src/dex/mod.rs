@@ -53,29 +53,35 @@ pub trait DexProvider: Send + Sync {
     async fn health_check(&self) -> ArbitrageResult<bool>;
 }
 
-/// Manager for multiple DEX providers
+/// Manager for multiple DEX providers.
+///
+/// Aggregates multiple DEX implementations to allow unified price fetching
+/// and interaction across the Solana ecosystem.
 pub struct DexManager {
     providers: Vec<std::sync::Arc<dyn DexProvider>>,
 }
 
 impl DexManager {
+    /// Creates a new, empty DexManager.
     pub fn new() -> Self {
         Self {
             providers: Vec::new(),
         }
     }
 
-    /// Add a DEX provider to the manager
+    /// Registers a new DEX provider.
     pub fn add_provider(&mut self, provider: std::sync::Arc<dyn DexProvider>) {
         self.providers.push(provider);
     }
 
-    /// Get all registered providers
+    /// Returns a slice of all registered providers.
     pub fn providers(&self) -> &[std::sync::Arc<dyn DexProvider>] {
         &self.providers
     }
 
-    /// Get prices from all providers for a trading pair
+    /// Fetches prices for a given pair from all registered providers.
+    ///
+    /// Useful for price discovery and cross-exchange comparison.
     pub async fn get_all_prices(&self, pair: &TokenPair) -> Vec<PriceData> {
         let mut prices = Vec::new();
         for provider in &self.providers {

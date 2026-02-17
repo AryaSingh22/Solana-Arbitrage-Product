@@ -3,6 +3,7 @@ use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal;
 
 /// Value at Risk (VaR) Calculator
+#[allow(dead_code)]
 pub struct VarCalculator {
     /// Confidence level (e.g., 0.95 or 0.99)
     confidence_level: f64,

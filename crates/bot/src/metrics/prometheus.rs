@@ -1,6 +1,6 @@
-use prometheus::{Counter, Gauge, Histogram, HistogramOpts, IntCounter, IntGauge, Opts, Registry};
-use std::sync::Arc;
+use prometheus::{Gauge, Histogram, HistogramOpts, IntCounter, IntGauge, Registry};
 
+#[allow(dead_code)]
 pub struct MetricsCollector {
     registry: Registry,
 

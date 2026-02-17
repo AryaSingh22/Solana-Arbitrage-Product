@@ -1,8 +1,6 @@
 use crate::error::ArbitrageResult;
-use crate::types::{DexType, PriceData, TokenPair};
-use rust_decimal::Decimal;
+use crate::types::PriceData;
 use simd_json::prelude::*;
-use simd_json::BorrowedValue;
 
 pub struct FastJsonParser;
 
@@ -18,13 +16,13 @@ impl FastJsonParser {
             crate::error::ArbitrageError::PriceFetch("Expected JSON array".to_string())
         })?;
 
-        let mut prices = Vec::with_capacity(array.len());
+        let prices = Vec::with_capacity(array.len());
 
         for item in array {
             // Simplified parsing logic matching Raydium structure
             // In reality, we'd need to match fields like "name", "price", etc.
-            if let Some(name) = item.get("name").and_then(|v| v.as_str()) {
-                if let Some(price_f64) = item.get("price").and_then(|v| v.as_f64()) {
+            if let Some(_name) = item.get("name").and_then(|v| v.as_str()) {
+                if let Some(_price_f64) = item.get("price").and_then(|v| v.as_f64()) {
                     // We would need to parse pair name to TokenPair here
                     // For now, we return empty or placeholder
                     // This function needs the logic from RaydiumProvider::get_price

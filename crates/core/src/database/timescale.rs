@@ -1,7 +1,7 @@
 use crate::risk::TradeOutcome;
 use crate::types::ArbitrageOpportunity;
 use anyhow::Result;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use deadpool_postgres::{ManagerConfig, Pool, RecyclingMethod, Runtime};
 use rust_decimal::prelude::ToPrimitive;
 use tokio_postgres::NoTls;

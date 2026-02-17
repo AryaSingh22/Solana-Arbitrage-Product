@@ -1,0 +1,264 @@
+    Checking solana-arb-core v0.1.0 (C:\Pro\Rust programms\Solana Arbitrage Project\crates\core)
+error: unused import: `std::io::Write`
+ --> crates\core\src\cache\mmap_cache.rs:4:5
+  |
+4 | use std::io::Write;
+  |     ^^^^^^^^^^^^^^
+  |
+  = note: `-D unused-imports` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+error: unused import: `DateTime`
+ --> crates\core\src\database\timescale.rs:4:14
+  |
+4 | use chrono::{DateTime, Utc};
+  |              ^^^^^^^^
+
+error: unused imports: `DexType` and `TokenPair`
+ --> crates\core\src\parsers\fast_json.rs:2:20
+  |
+2 | use crate::types::{DexType, PriceData, TokenPair};
+  |                    ^^^^^^^             ^^^^^^^^^
+
+error: unused import: `rust_decimal::Decimal`
+ --> crates\core\src\parsers\fast_json.rs:3:5
+  |
+3 | use rust_decimal::Decimal;
+  |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: unused import: `simd_json::BorrowedValue`
+ --> crates\core\src\parsers\fast_json.rs:5:5
+  |
+5 | use simd_json::BorrowedValue;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unused import: `TokenPair`
+ --> crates\core\src\pathfinding\simd_profit.rs:1:42
+  |
+1 | use crate::types::{ArbitrageOpportunity, TokenPair};
+  |                                          ^^^^^^^^^
+
+error: unused import: `crate::error::ArbitrageResult`
+ --> crates\core\src\pricing\parallel_fetcher.rs:2:5
+  |
+2 | use crate::error::ArbitrageResult;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unused import: `rust_decimal::Decimal`
+ --> crates\core\src\streaming\ws_manager.rs:3:5
+  |
+3 | use rust_decimal::Decimal;
+  |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: unused import: `std::collections::HashMap`
+ --> crates\core\src\streaming\ws_manager.rs:5:5
+  |
+5 | use std::collections::HashMap;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unused import: `std::str::FromStr`
+ --> crates\core\src\streaming\ws_manager.rs:6:5
+  |
+6 | use std::str::FromStr;
+  |     ^^^^^^^^^^^^^^^^^
+
+error: unused import: `warn`
+  --> crates\core\src\alt\manager.rs:14:21
+   |
+14 | use tracing::{info, warn};
+   |                     ^^^^
+
+error: variable does not need to be mutable
+  --> crates\core\src\pricing\hybrid_fetcher.rs:38:13
+   |
+38 |         let mut prices = self.http_fetcher.fetch_all_prices(pairs).await;
+   |             ----^^^^^^
+   |             |
+   |             help: remove this `mut`
+   |
+   = note: `-D unused-mut` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unused_mut)]`
+
+error: unused import: `rand::seq::SliceRandom`
+ --> crates\core\src\jito\client.rs:2:5
+  |
+2 | use rand::seq::SliceRandom;
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: unused variable: `mmap`
+  --> crates\core\src\cache\mmap_cache.rs:43:13
+   |
+43 |         let mmap = self.mmap.lock().await;
+   |             ^^^^ help: if this is intentional, prefix it with an underscore: `_mmap`
+   |
+   = note: `-D unused-variables` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unused_variables)]`
+
+error: variable does not need to be mutable
+  --> crates\core\src\parsers\fast_json.rs:21:13
+   |
+21 |         let mut prices = Vec::with_capacity(array.len());
+   |             ----^^^^^^
+   |             |
+   |             help: remove this `mut`
+
+error: unused variable: `name`
+  --> crates\core\src\parsers\fast_json.rs:26:25
+   |
+26 |             if let Some(name) = item.get("name").and_then(|v| v.as_str()) {
+   |                         ^^^^ help: if this is intentional, prefix it with an underscore: `_name`
+
+error: unused variable: `price_f64`
+  --> crates\core\src\parsers\fast_json.rs:27:29
+   |
+27 |                 if let Some(price_f64) = item.get("price").and_then(|v| v.as_f64()) {
+   |                             ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_price_f64`
+
+error: unused variable: `pairs`
+  --> crates\core\src\pricing\hybrid_fetcher.rs:24:31
+   |
+24 |     pub async fn start(&self, pairs: &[TokenPair]) {
+   |                               ^^^^^ help: if this is intentional, prefix it with an underscore: `_pairs`
+
+error: unused variable: `json`
+  --> crates\core\src\streaming\ws_manager.rs:52:39
+   |
+52 | ...                   if let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) {
+   |                                 ^^^^ help: if this is intentional, prefix it with an underscore: `_json`
+
+error: unused variable: `price_tx`
+  --> crates\core\src\streaming\ws_manager.rs:44:21
+   |
+44 |                 let price_tx = self.price_tx.clone();
+   |                     ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_price_tx`
+
+error: unused variable: `tx`
+  --> crates\core\src\alt\manager.rs:50:13
+   |
+50 |         let tx = Transaction::new_signed_with_payer(
+   |             ^^ help: if this is intentional, prefix it with an underscore: `_tx`
+
+error: field `index` is never read
+  --> crates\core\src\cache\mmap_cache.rs:11:5
+   |
+ 9 | pub struct MmapPriceCache {
+   |            -------------- field in this struct
+10 |     mmap: Arc<tokio::sync::Mutex<MmapMut>>,
+11 |     index: HashMap<String, usize>, // Offset in mmap
+   |     ^^^^^
+   |
+   = note: `-D dead-code` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(dead_code)]`
+
+error: field `ws_manager` is never read
+ --> crates\core\src\pricing\hybrid_fetcher.rs:9:5
+  |
+8 | pub struct HybridPriceFetcher {
+  |            ------------------ field in this struct
+9 |     ws_manager: WebSocketManager,
+  |     ^^^^^^^^^^
+
+error: field `confidence_level` is never read
+ --> crates\core\src\risk\var.rs:8:5
+  |
+6 | pub struct VarCalculator {
+  |            ------------- field in this struct
+7 |     /// Confidence level (e.g., 0.95 or 0.99)
+8 |     confidence_level: f64,
+  |     ^^^^^^^^^^^^^^^^
+
+error: field `rpc_client` is never read
+  --> crates\core\src\alt\manager.rs:18:5
+   |
+17 | pub struct AltManager {
+   |            ---------- field in this struct
+18 |     rpc_client: Arc<RpcClient>,
+   |     ^^^^^^^^^^
+
+error: this expression borrows a value the compiler would automatically borrow
+  --> crates\core\src\cache\mmap_cache.rs:38:13
+   |
+38 |             (&mut mmap[0..encoded.len()]).copy_from_slice(&encoded);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: change this to: `mmap[0..encoded.len()]`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#needless_borrow
+   = note: `-D clippy::needless-borrow` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_borrow)]`
+
+error: this function has too many arguments (8/7)
+  --> crates\core\src\history.rs:43:5
+   |
+43 | /     pub fn record_trade(
+44 | |         &self,
+45 | |         opp: &ArbitrageOpportunity,
+46 | |         size_usd: Decimal,
+...  |
+51 | |         is_dry_run: bool,
+52 | |     ) {
+   | |_____^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#too_many_arguments
+   = note: `-D clippy::too-many-arguments` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::too_many_arguments)]`
+
+error: unnecessary `if let` since only the `Ok` variant of the iterator element is used
+   --> crates\core\src\history.rs:130:9
+    |
+130 | /         for line in reader.lines() {
+131 | |             if let Ok(line) = line {
+132 | |                 if let Ok(record) = serde_json::from_str::<TradeRecord>(&line) {
+133 | |                     trades.push(record);
+...   |
+136 | |         }
+    | |_________^
+    |
+help: try `.flatten()` and remove the `if let` statement in the for loop
+   --> crates\core\src\history.rs:131:13
+    |
+131 | /             if let Ok(line) = line {
+132 | |                 if let Ok(record) = serde_json::from_str::<TradeRecord>(&line) {
+133 | |                     trades.push(record);
+134 | |                 }
+135 | |             }
+    | |_____________^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#manual_flatten
+    = note: `-D clippy::manual-flatten` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::manual_flatten)]`
+help: try
+    |
+130 ~         for line in reader.lines().flatten() {
+131 +             if let Ok(record) = serde_json::from_str::<TradeRecord>(&line) {
+132 +                 trades.push(record);
+133 +             }
+134 +         }
+    |
+
+error: useless use of `vec!`
+   --> crates\core\src\jito\client.rs:107:28
+    |
+107 |           let tip_accounts = vec![
+    |  ____________________________^
+108 | |             "96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5",
+109 | |             "HFqU5x63VTqvQss8hp11i4wVV8bD44Puy60pxTKAW4PH",
+110 | |             "Cw8CFyM9FkoMi7K7Crf6HNQqf4uEMzpKw6QNghXLvLkY",
+...   |
+115 | |             "3AVi9Tg9Uo68tJfuvoKvqKNWKkC5wPdSSdeBnIzKZ6jJ",
+116 | |         ];
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#useless_vec
+    = note: `-D clippy::useless-vec` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::useless_vec)]`
+help: you can use an array directly
+    |
+107 ~         let tip_accounts = ["96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5",
+108 +             "HFqU5x63VTqvQss8hp11i4wVV8bD44Puy60pxTKAW4PH",
+109 +             "Cw8CFyM9FkoMi7K7Crf6HNQqf4uEMzpKw6QNghXLvLkY",
+110 +             "ADaUMid9yfUytqMBgopwjb2DTLSokTSzL1zt6iGPaS49",
+111 +             "DfXygSm4jCyNCyb3qzK6966vGgy5tQSZHarris11tc66",
+112 +             "ADuUkR4ykG49cvq5RTu3TRLpVIUwDiIHjYyC1E1AtDyV",
+113 +             "DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL",
+114 ~             "3AVi9Tg9Uo68tJfuvoKvqKNWKkC5wPdSSdeBnIzKZ6jJ"];
+    |
+
+error: could not compile `solana-arb-core` (lib) due to 29 previous errors

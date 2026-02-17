@@ -1,4 +1,4 @@
-use crate::types::{ArbitrageOpportunity, TokenPair};
+use crate::types::ArbitrageOpportunity;
 use rust_decimal::Decimal;
 
 pub struct SimdProfitCalculator;

@@ -1,0 +1,30 @@
+{
+    "mainnet": {
+        "So11111111111111111111111111111111111111112": {
+            "token_symbol": "SOL",
+            "reserve_pubkey": "8PbodeaosQP19SjYFx855UMqWxH2HynZLdBXmsrbac36",
+            "liquidity_supply_pubkey": "8UviNr47S8eL6J3WfDxMRa3hvLta1VDJwNWqsDgtN3Cv",
+            "lending_market": "4UpD2fh7xH3VP9QQaXtsS1YY3bxzWhtfpks7FatyKvdY"
+        },
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+            "token_symbol": "USDC",
+            "reserve_pubkey": "BgxfHJDzm44T7XG68MYKx7YisTjZu73tVovyZSjJMpmw",
+            "liquidity_supply_pubkey": "8SheGtsopRUDzdiD6v6BR9a6bqZ9QwywYQY99Fp5meNf",
+            "lending_market": "4UpD2fh7xH3VP9QQaXtsS1YY3bxzWhtfpks7FatyKvdY"
+        }
+    },
+    "devnet": {
+        "So11111111111111111111111111111111111111112": {
+            "token_symbol": "SOL",
+            "reserve_pubkey": "5VVLD7BQp8y3bTgyF5ezm1ResyMTR3PhYsT4iHFU8Sxz",
+            "liquidity_supply_pubkey": "furd3XUtjXZ2gRvSsoUts9A5m8cMJNqdsyR2Rt8vY9s",
+            "lending_market": "GvjoVKNjBvQcFaSKUW1gTE7DxhSpjHbE69umVR5nPuQp"
+        },
+        "zVzi5VAf4qMEwzv7NXECVx5v2pQ7xnqVVjCXZwS9XzA": {
+            "token_symbol": "USDC",
+            "reserve_pubkey": "FNNkz4RCQezSSS71rW2tvqZH1LCkTzaiG7Nd1LeA5x5y",
+            "liquidity_supply_pubkey": "HixjFJoeD2ggqKgFHQxrcJFjVvE5nXKuUPYNijFg7Kc5",
+            "lending_market": "GvjoVKNjBvQcFaSKUW1gTE7DxhSpjHbE69umVR5nPuQp"
+        }
+    }
+}

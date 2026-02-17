@@ -1,16 +1,20 @@
 use async_trait::async_trait;
-use rust_decimal::Decimal;
 use solana_arb_core::{
     dex::DexProvider,
     error::ArbitrageError,
     types::{DexType, PriceData, TokenPair},
     ArbitrageResult,
 };
-use std::sync::Arc;
 use tokio::sync::mpsc;
 
 pub struct LifinityProvider {
     // Placeholder - in real impl, would have RPC client or API key
+}
+
+impl Default for LifinityProvider {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl LifinityProvider {
@@ -25,7 +29,7 @@ impl DexProvider for LifinityProvider {
         DexType::Lifinity
     }
 
-    async fn get_price(&self, pair: &TokenPair) -> ArbitrageResult<PriceData> {
+    async fn get_price(&self, _pair: &TokenPair) -> ArbitrageResult<PriceData> {
         // Placeholder implementation
         // Real implementation would query Lifinity pools or API
 

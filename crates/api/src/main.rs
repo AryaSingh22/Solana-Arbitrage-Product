@@ -301,7 +301,7 @@ async fn validate_dex_coverage(state: &Arc<AppState>) {
         let seen = coverage.get(&pair.symbol());
         let missing: Vec<_> = DexType::all()
             .iter()
-            .filter(|dex| seen.map_or(true, |set| !set.contains(dex)))
+            .filter(|dex| seen.is_none_or(|set| !set.contains(dex)))
             .collect();
 
         if !missing.is_empty() {
@@ -388,8 +388,8 @@ async fn get_prices(
         result
             .into_iter()
             .filter(|p| {
-                let base_match = params.base.as_ref().map_or(true, |b| &p.pair.base == b);
-                let quote_match = params.quote.as_ref().map_or(true, |q| &p.pair.quote == q);
+                let base_match = params.base.as_ref().is_none_or(|b| &p.pair.base == b);
+                let quote_match = params.quote.as_ref().is_none_or(|q| &p.pair.quote == q);
                 base_match && quote_match
             })
             .collect()
@@ -406,7 +406,7 @@ async fn get_pair_prices(
     Path(pair_str): Path<String>,
 ) -> impl IntoResponse {
     // Parse pair string (e.g., "SOL-USDC" or "SOL/USDC")
-    let parts: Vec<&str> = pair_str.split(|c| c == '-' || c == '/').collect();
+    let parts: Vec<&str> = pair_str.split(['-', '/']).collect();
 
     if parts.len() != 2 {
         return (

@@ -1,16 +1,20 @@
 use async_trait::async_trait;
-use rust_decimal::Decimal;
 use solana_arb_core::{
     dex::DexProvider,
     error::ArbitrageError,
     types::{DexType, PriceData, TokenPair},
     ArbitrageResult,
 };
-use std::sync::Arc;
 use tokio::sync::mpsc;
 
 pub struct PhoenixProvider {
     // Placeholder
+}
+
+impl Default for PhoenixProvider {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl PhoenixProvider {

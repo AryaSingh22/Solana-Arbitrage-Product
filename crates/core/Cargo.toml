@@ -37,6 +37,8 @@ simd-json = "0.17.0"
 memmap2 = "0.9.9"
 bincode = "1.3"
 
+
+
 [features]
 default = ["http"]
 http = ["reqwest"]
@@ -49,3 +51,8 @@ full = ["http", "ws", "cache"]
 tokio-test = "0.4"
 rand = "0.8"
 tracing-subscriber = "0.3"
+criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
+
+[[bench]]
+name = "trading_benchmarks"
+harness = false

@@ -1,11 +1,11 @@
 use crate::types::{PriceData, TokenPair};
 use memmap2::MmapMut;
 use std::collections::HashMap;
-use std::io::Write;
 use std::sync::Arc;
 
 const CACHE_SIZE: usize = 100 * 1024 * 1024; // 100MB
 
+#[allow(dead_code)]
 pub struct MmapPriceCache {
     mmap: Arc<tokio::sync::Mutex<MmapMut>>,
     index: HashMap<String, usize>, // Offset in mmap
@@ -28,19 +28,25 @@ impl MmapPriceCache {
 
     pub async fn write_price(&mut self, _pair: &TokenPair, price: &PriceData) {
         // Serialization
-        let encoded: Vec<u8> = bincode::serialize(price).unwrap();
+        let encoded: Vec<u8> = match bincode::serialize(price) {
+            Ok(data) => data,
+            Err(e) => {
+                tracing::warn!("Failed to serialize price data for mmap cache: {}", e);
+                return;
+            }
+        };
 
         // Write to mmap
         let mut mmap = self.mmap.lock().await;
         // In a real impl, we would calculate offset based on pair hash or index
         // For now, simpler to just demo the write
         if encoded.len() <= mmap.len() {
-            (&mut mmap[0..encoded.len()]).copy_from_slice(&encoded);
+            mmap[0..encoded.len()].copy_from_slice(&encoded);
         }
     }
 
     pub async fn read_price(&self, _pair: &TokenPair) -> Option<PriceData> {
-        let mmap = self.mmap.lock().await;
+        let _mmap = self.mmap.lock().await;
         // Read from mmap
         // bincode::deserialize(&mmap[offset..]).ok()
         None

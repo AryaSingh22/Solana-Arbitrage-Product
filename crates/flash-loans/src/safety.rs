@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Result};
-use rust_decimal::Decimal;
 use solana_sdk::instruction::Instruction;
 use solana_sdk::pubkey::Pubkey;
 use tracing::warn;

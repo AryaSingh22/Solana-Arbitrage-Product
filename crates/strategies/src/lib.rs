@@ -6,9 +6,11 @@ use solana_arb_core::{
 
 pub mod latency;
 pub mod statistical;
+pub mod plugin;
 
 pub use latency::LatencyArbitrage;
 pub use statistical::StatisticalArbitrage;
+pub use plugin::*;
 
 /// Trait for trading strategies
 #[async_trait]

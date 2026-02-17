@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Result};
-use rand::seq::SliceRandom;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -104,20 +103,22 @@ impl JitoClient {
     /// Get random tip account (Placeholder - normally fetched from Jito API)
     pub async fn get_tip_account(&self) -> Result<String> {
         // List of common Jito tip accounts
-        let tip_accounts = vec![
-            "96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5",
+        let tip_accounts = ["96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5",
             "HFqU5x63VTqvQss8hp11i4wVV8bD44Puy60pxTKAW4PH",
             "Cw8CFyM9FkoMi7K7Crf6HNQqf4uEMzpKw6QNghXLvLkY",
             "ADaUMid9yfUytqMBgopwjb2DTLSokTSzL1zt6iGPaS49",
             "DfXygSm4jCyNCyb3qzK6966vGgy5tQSZHarris11tc66",
             "ADuUkR4ykG49cvq5RTu3TRLpVIUwDiIHjYyC1E1AtDyV",
             "DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL",
-            "3AVi9Tg9Uo68tJfuvoKvqKNWKkC5wPdSSdeBnIzKZ6jJ",
-        ];
+            "3AVi9Tg9Uo68tJfuvoKvqKNWKkC5wPdSSdeBnIzKZ6jJ"];
 
         use rand::seq::SliceRandom;
         let mut rng = rand::thread_rng();
-        Ok(tip_accounts.choose(&mut rng).unwrap().to_string())
+        // Safety: tip_accounts is a non-empty compile-time constant
+        Ok(tip_accounts
+            .choose(&mut rng)
+            .expect("tip_accounts is non-empty")
+            .to_string())
     }
 
     /// Get the tip amount in lamports

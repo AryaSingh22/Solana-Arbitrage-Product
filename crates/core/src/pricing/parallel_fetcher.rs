@@ -1,5 +1,4 @@
 use crate::dex::DexProvider;
-use crate::error::ArbitrageResult;
 use crate::types::{PriceData, TokenPair};
 use std::sync::Arc;
 use std::time::Instant;

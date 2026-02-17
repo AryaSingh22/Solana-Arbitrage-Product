@@ -6,6 +6,8 @@
 use chrono::{DateTime, Duration, Utc};
 use rust_decimal::Decimal;
 use std::collections::HashMap;
+use std::sync::Arc;
+use crate::events::{EventBus, TradingEvent};
 
 pub mod circuit_breaker;
 pub mod var;
@@ -65,6 +67,8 @@ pub struct RiskManager {
     pub volatility_tracker: volatility::VolatilityTracker,
     /// VaR calculator
     pub var_calculator: var::VarCalculator,
+    /// Event bus for publishing risk events
+    event_bus: Option<Arc<EventBus>>,
 }
 
 impl RiskManager {
@@ -77,16 +81,27 @@ impl RiskManager {
             circuit_breaker: circuit_breaker::CircuitBreaker::new(3, 5, 300), // 3 failures, 5 successes, 5 min timeout
             volatility_tracker: volatility::VolatilityTracker::new(20), // 20-period moving average
             var_calculator: var::VarCalculator::new(0.95),              // 95% confidence
+            event_bus: None,
         }
+    }
+
+    pub async fn set_event_bus(&mut self, event_bus: Arc<EventBus>) {
+        self.event_bus = Some(event_bus.clone());
+        self.circuit_breaker.set_event_bus(event_bus).await;
     }
 
     /// Check if a trade is allowed under current risk parameters
     pub async fn can_trade(&self, _pair: &str, size: Decimal) -> TradeDecision {
         // Check circuit breaker
         if !self.circuit_breaker.can_execute().await {
-            return TradeDecision::Rejected {
-                reason: "Circuit breaker OPEN - trading halted".to_string(),
-            };
+            let reason = "Circuit breaker OPEN - trading halted".to_string();
+            if let Some(bus) = &self.event_bus {
+                 bus.publish(TradingEvent::TradeRejected {
+                     id: "pre-check".to_string(), // No opp ID here yet
+                     reason: reason.clone(),
+                 });
+            }
+            return TradeDecision::Rejected { reason };
         }
 
         // Check cooldown after loss
@@ -94,9 +109,14 @@ impl RiskManager {
             let cooldown = Duration::seconds(self.config.loss_cooldown_seconds);
             if Utc::now() - last_loss < cooldown {
                 let remaining = (last_loss + cooldown - Utc::now()).num_seconds();
-                return TradeDecision::Rejected {
-                    reason: format!("Cooldown active - {} seconds remaining", remaining),
-                };
+                let reason = format!("Cooldown active - {} seconds remaining", remaining);
+                if let Some(bus) = &self.event_bus {
+                     bus.publish(TradingEvent::TradeRejected {
+                         id: "pre-check".to_string(),
+                         reason: reason.clone(),
+                     });
+                }
+                return TradeDecision::Rejected { reason };
             }
         }
 
@@ -113,9 +133,14 @@ impl RiskManager {
         if current_exposure + size > self.config.max_total_exposure {
             let available = self.config.max_total_exposure - current_exposure;
             if available <= Decimal::ZERO {
-                return TradeDecision::Rejected {
-                    reason: "Maximum exposure limit reached".to_string(),
-                };
+                let reason = "Maximum exposure limit reached".to_string();
+                if let Some(bus) = &self.event_bus {
+                     bus.publish(TradingEvent::TradeRejected {
+                         id: "pre-check".to_string(),
+                         reason: reason.clone(),
+                     });
+                }
+                return TradeDecision::Rejected { reason };
             }
             return TradeDecision::Reduced {
                 new_size: available,
